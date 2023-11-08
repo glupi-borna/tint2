@@ -696,6 +696,9 @@ void add_entry(char *key, char *value)
         free_and_null(execp->backend->command);
         if (strlen(value) > 0)
             execp->backend->command = strdup(value);
+    } else if (strcmp(key, "execp_isolate") == 0) {
+        Execp *execp = get_or_create_last_execp();
+        execp->backend->isolate = atoi(value);
     } else if (strcmp(key, "execp_interval") == 0) {
         Execp *execp = get_or_create_last_execp();
         execp->backend->interval = 0;

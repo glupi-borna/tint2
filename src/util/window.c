@@ -607,7 +607,7 @@ err2:
 err1:
     if (ximg)
         XDestroyImage(ximg);
-err0:    
+err0:
     return result;
 }
 

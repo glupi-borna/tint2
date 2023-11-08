@@ -32,7 +32,7 @@ void default_execp()
 {
 }
 
-Execp *create_execp()
+Execp* create_execp()
 {
     Execp *execp = (Execp *)calloc(1, sizeof(Execp));
     execp->backend = (ExecpBackend *)calloc(1, sizeof(ExecpBackend));
@@ -67,6 +67,7 @@ gpointer create_execp_frontend(gconstpointer arg, gpointer data)
         Execp *dummy = create_execp();
         dummy->frontend = (ExecpFrontend *)calloc(1, sizeof(ExecpFrontend));
         dummy->backend->instances = g_list_append(dummy->backend->instances, dummy);
+        dummy->backend->isolate = execp_backend->backend->isolate;
         dummy->dummy = true;
         return dummy;
     }
@@ -141,11 +142,63 @@ void destroy_execp(void *obj)
     }
 }
 
+void execp_pre_init()
+{
+    Execp* extras[100];
+    int num_extras = 0;
+    for (GList *l = panel_config.execp_list; l; l = l->next) {
+        Execp *e = l->data;
+        ExecpBackend* backend = e->backend;
+        if (!backend->isolate) continue;
+        if (backend->monitor != -1) {
+            fprintf(stderr, "tint2: Warning: execp_isolate only does anything if execp_monitor is set to 'all'\n");
+            return;
+        }
+
+        backend->monitor = 0;
+        for (int i=1; i<server.num_monitors; i++) {
+            Execp* monitor_execp = create_execp();
+            monitor_execp->backend->monitor = i;
+            monitor_execp->backend->command = strdup(backend->command);
+            monitor_execp->backend->interval = backend->interval;
+            monitor_execp->backend->isolate = backend->isolate;
+            monitor_execp->backend->bg = backend->bg;
+            monitor_execp->backend->centered = backend->centered;
+            monitor_execp->backend->continuous = backend->continuous;
+            monitor_execp->backend->font_color = backend->font_color;
+            monitor_execp->backend->font_desc = backend->font_desc;
+            monitor_execp->backend->has_font = backend->has_font;
+            monitor_execp->backend->has_icon = backend->has_icon;
+            monitor_execp->backend->has_markup = backend->has_markup;
+            monitor_execp->backend->has_user_tooltip = backend->has_user_tooltip;
+            monitor_execp->backend->icon_h = backend->icon_h;
+            monitor_execp->backend->icon_w = backend->icon_w;
+            monitor_execp->backend->uwheel_command = backend->uwheel_command;
+            monitor_execp->backend->dwheel_command = backend->dwheel_command;
+            monitor_execp->backend->lclick_command = backend->lclick_command;
+            monitor_execp->backend->mclick_command = backend->mclick_command;
+            monitor_execp->backend->rclick_command = backend->rclick_command;
+            extras[num_extras] = monitor_execp;
+            num_extras++;
+        }
+    }
+
+
+    for (int i=0; i<num_extras; i++) {
+        panel_config.execp_list = g_list_append(panel_config.execp_list, extras[i]);
+    }
+}
+
 void init_execp()
 {
     GList *to_remove = panel_config.execp_list;
     for (int k = 0; k < strlen(panel_items_order) && to_remove; k++) {
-        if (panel_items_order[k] == 'E') {
+        if (panel_items_order[k] != 'E') continue;
+        Execp* e = (Execp*)to_remove->data;
+        to_remove = to_remove->next;
+
+        if (!e->backend->isolate) continue;
+        for (int i=1; i<server.num_monitors; i++) {
             to_remove = to_remove->next;
         }
     }
@@ -681,7 +734,10 @@ void execp_timer_callback(void *arg)
 
     fcntl(pipe_fd_stderr[0], F_SETFL, O_NONBLOCK | fcntl(pipe_fd_stderr[0], F_GETFL));
 
+    Panel* panel = (Panel*)execp->area.panel;
     // Fork and run command, capturing stdout in pipe
+    setenvd("EXECP_MONITOR", panel->monitor);
+    setenv("EXECP_MONITOR_NAME", server.monitors[panel->monitor].names[0], TRUE);
     pid_t child = fork();
     if (child == -1) {
         // TODO maybe write this in tooltip, but if this happens we're screwed anyways
@@ -703,11 +759,16 @@ void execp_timer_callback(void *arg)
         close(pipe_fd_stderr[1]);
         close_all_fds();
         setpgid(0, 0);
+
         execl("/bin/sh", "/bin/sh", "-c", execp->backend->command, NULL);
+
         // This should never happen!
-        fprintf(stderr, "execl() failed\nexecl() failed\n");
+        fprintf(stderr, "execl() failed\n");
         exit(0);
     }
+    unsetenv("EXECP_MONITOR");
+    unsetenv("EXECP_MONITOR_NAME");
+
     close(pipe_fd_stdout[1]);
     close(pipe_fd_stderr[1]);
     execp->backend->child = child;
@@ -1049,13 +1110,16 @@ void execp_update_post_read(Execp *execp)
 
 void handle_execp_events()
 {
-    for (GList *l = panel_config.execp_list; l; l = l->next) {
-        Execp *execp = (Execp *)l->data;
-        if (read_execp(execp)) {
-            GList *l_instance;
-            for (l_instance = execp->backend->instances; l_instance; l_instance = l_instance->next) {
-                Execp *instance = (Execp *)l_instance->data;
-                execp_update_post_read(instance);
+    for (int i = 0; i < num_panels; i++) {
+        Panel panel = panels[i];
+        for (GList *l = panel.execp_list; l; l = l->next) {
+            Execp *execp = (Execp *)l->data;
+            if (read_execp(execp)) {
+                GList *l_instance;
+                for (l_instance = execp->backend->instances; l_instance; l_instance = l_instance->next) {
+                    Execp *instance = (Execp *)l_instance->data;
+                    execp_update_post_read(instance);
+                }
             }
         }
     }

@@ -738,8 +738,17 @@ void set_panel_items_order(Panel *p)
         if (panel_items_order[k] == 'E') {
             GList *item = g_list_nth(p->execp_list, i_execp);
             i_execp++;
-            if (item)
-                p->area.children = g_list_append(p->area.children, (Area *)item->data);
+            if (item) {
+                Execp* e = (Execp*)item->data;
+                if (e->backend->isolate) {
+                    for (int mon=0; mon<server.num_monitors; mon++) {
+                        p->area.children = g_list_append(p->area.children, (Area*)item->data);
+                        item = g_list_nth(p->execp_list, i_execp);
+                    }
+                } else {
+                    p->area.children = g_list_append(p->area.children, (Area *)item->data);
+                }
+            }
         }
         if (panel_items_order[k] == 'P') {
             GList *item = g_list_nth(p->button_list, i_button);

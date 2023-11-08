@@ -861,6 +861,9 @@ void config_write_execp(FILE *fp)
         fprintf(fp, "execp_command = %s\n", gtk_entry_get_text(GTK_ENTRY(executor->execp_command)));
         fprintf(fp, "execp_interval = %d\n", (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(executor->execp_interval)));
         fprintf(fp,
+                "execp_isolate = %d\n",
+                gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(executor->execp_isolate)) ? 1 : 0);
+        fprintf(fp,
                 "execp_has_icon = %d\n",
                 gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(executor->execp_has_icon)) ? 1 : 0);
         fprintf(fp,
@@ -1272,10 +1275,9 @@ void add_entry(char *key, char *value)
     } else if (strcmp(key, "background_content_tint_weight") == 0) {
         gtk_spin_button_set_value(GTK_SPIN_BUTTON(background_fill_content_tint_weight), atoi(value));
         background_force_update();
-    }
 
+    } else if (strcmp(key, "panel_size") == 0) {
     /* Panel */
-    else if (strcmp(key, "panel_size") == 0) {
         extract_values(value, &value1, &value2, &value3);
         char *b;
         if ((b = strchr(value1, '%'))) {
@@ -1424,10 +1426,9 @@ void add_entry(char *key, char *value)
             gtk_combo_box_set_active(GTK_COMBO_BOX(panel_combo_monitor), 7);
     } else if (strcmp(key, "panel_shrink") == 0) {
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(panel_shrink), atoi(value));
-    }
 
-    /* autohide options */
-    else if (strcmp(key, "autohide") == 0) {
+    } else if (strcmp(key, "autohide") == 0) {
+        /* autohide options */
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(panel_autohide), atoi(value));
     } else if (strcmp(key, "autohide_show_timeout") == 0) {
         gtk_spin_button_set_value(GTK_SPIN_BUTTON(panel_autohide_show_time), atof(value));
@@ -1447,10 +1448,9 @@ void add_entry(char *key, char *value)
         } else {
             gtk_spin_button_set_value(GTK_SPIN_BUTTON(panel_autohide_size), atoi(value));
         }
-    }
 
-    /* Battery */
-    else if (strcmp(key, "battery") == 0) {
+    } else if (strcmp(key, "battery") == 0) {
+        /* Battery */
         // Obsolete option
         config_has_battery = 1;
         config_battery_enabled = atoi(value);
@@ -1509,10 +1509,9 @@ void add_entry(char *key, char *value)
         gtk_entry_set_text(GTK_ENTRY(ac_connected_cmd), value);
     } else if (strcmp(key, "ac_disconnected_cmd") == 0) {
         gtk_entry_set_text(GTK_ENTRY(ac_disconnected_cmd), value);
-    }
 
+    } else if (strcmp(key, "time1_format") == 0) {
     /* Clock */
-    else if (strcmp(key, "time1_format") == 0) {
         gtk_entry_set_text(GTK_ENTRY(clock_format_line1), value);
         no_items_clock_enabled = strlen(value) > 0;
     } else if (strcmp(key, "time2_format") == 0) {
@@ -1558,10 +1557,9 @@ void add_entry(char *key, char *value)
         gtk_entry_set_text(GTK_ENTRY(clock_uwheel_command), value);
     } else if (strcmp(key, "clock_dwheel_command") == 0) {
         gtk_entry_set_text(GTK_ENTRY(clock_dwheel_command), value);
-    }
 
+    } else if (strcmp(key, "taskbar_mode") == 0) {
     /* Taskbar */
-    else if (strcmp(key, "taskbar_mode") == 0) {
         if (strcmp(value, "multi_desktop") == 0)
             gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(taskbar_show_desktop), 1);
         else
@@ -1654,10 +1652,9 @@ void add_entry(char *key, char *value)
             int alpha = atoi(value2);
             gtk_color_button_set_alpha(GTK_COLOR_BUTTON(taskbar_name_active_color), (alpha * 65535) / 100);
         }
-    }
 
-    /* Task */
-    else if (strcmp(key, "task_text") == 0) {
+    } else if (strcmp(key, "task_text") == 0) {
+        /* Task */
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(task_show_text), atoi(value));
     } else if (strcmp(key, "task_icon") == 0) {
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(task_show_icon), atoi(value));
@@ -1778,18 +1775,18 @@ void add_entry(char *key, char *value)
             int id = background_index_safe(atoi(value));
             gtk_combo_box_set_active(GTK_COMBO_BOX(widget), id);
         }
-    }
-    // "tooltip" is deprecated but here for backwards compatibility
-    else if (strcmp(key, "task_tooltip") == 0 || strcmp(key, "tooltip") == 0) {
+    } else if (strcmp(key, "task_tooltip") == 0 || strcmp(key, "tooltip") == 0) {
+        // "tooltip" is deprecated but here for backwards compatibility
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(tooltip_task_show), atoi(value));
-    }
-    else if (strcmp(key, "task_thumbnail") == 0)
+
+    } else if (strcmp(key, "task_thumbnail") == 0) {
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(tooltip_task_thumbnail), atoi(value));
-    else if (strcmp(key, "task_thumbnail_size") == 0)
+
+    } else if (strcmp(key, "task_thumbnail_size") == 0) {
         gtk_spin_button_set_value(GTK_SPIN_BUTTON(tooltip_task_thumbnail_size), MAX(8, atoi(value)));
 
+    } else if (strcmp(key, "systray") == 0) {
     /* Systray */
-    else if (strcmp(key, "systray") == 0) {
         // Obsolete option
         config_has_systray = 1;
         config_systray_enabled = atoi(value);
@@ -1839,10 +1836,9 @@ void add_entry(char *key, char *value)
         gtk_spin_button_set_value(GTK_SPIN_BUTTON(systray_icon_brightness), atoi(value3));
     } else if (strcmp(key, "systray_name_filter") == 0) {
         gtk_entry_set_text(GTK_ENTRY(systray_name_filter), value);
-    }
 
-    /* Launcher */
-    else if (strcmp(key, "launcher_padding") == 0) {
+    } else if (strcmp(key, "launcher_padding") == 0) {
+        /* Launcher */
         extract_values(value, &value1, &value2, &value3);
         gtk_spin_button_set_value(GTK_SPIN_BUTTON(launcher_padding_x), atoi(value1));
         gtk_spin_button_set_value(GTK_SPIN_BUTTON(launcher_spacing), atoi(value1));
@@ -1887,10 +1883,9 @@ void add_entry(char *key, char *value)
         gtk_spin_button_set_value(GTK_SPIN_BUTTON(launcher_icon_opacity), atoi(value1));
         gtk_spin_button_set_value(GTK_SPIN_BUTTON(launcher_icon_saturation), atoi(value2));
         gtk_spin_button_set_value(GTK_SPIN_BUTTON(launcher_icon_brightness), atoi(value3));
-    }
 
-    /* Tooltip */
-    else if (strcmp(key, "tooltip_show_timeout") == 0) {
+    } else if (strcmp(key, "tooltip_show_timeout") == 0) {
+        /* Tooltip */
         gtk_spin_button_set_value(GTK_SPIN_BUTTON(tooltip_show_after), atof(value));
     } else if (strcmp(key, "tooltip_hide_timeout") == 0) {
         gtk_spin_button_set_value(GTK_SPIN_BUTTON(tooltip_hide_after), atof(value));
@@ -1914,10 +1909,9 @@ void add_entry(char *key, char *value)
     } else if (strcmp(key, "tooltip_font") == 0) {
         gtk_font_button_set_font_name(GTK_FONT_BUTTON(tooltip_font), value);
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(tooltip_font_set), TRUE);
-    }
 
-    /* Mouse actions */
-    else if (strcmp(key, "mouse_left") == 0) {
+    } else if (strcmp(key, "mouse_left") == 0) {
+        /* Mouse actions */
         set_action(value, task_mouse_left);
     } else if (strcmp(key, "mouse_middle") == 0) {
         set_action(value, task_mouse_middle);
@@ -1927,10 +1921,9 @@ void add_entry(char *key, char *value)
         set_action(value, task_mouse_scroll_up);
     } else if (strcmp(key, "mouse_scroll_down") == 0) {
         set_action(value, task_mouse_scroll_down);
-    }
 
-    /* Separator */
-    else if (strcmp(key, "separator") == 0) {
+    } else if (strcmp(key, "separator") == 0) {
+        /* Separator */
         separator_create_new();
     } else if (strcmp(key, "separator_background_id") == 0) {
         int id = background_index_safe(atoi(value));
@@ -1958,10 +1951,9 @@ void add_entry(char *key, char *value)
         gtk_spin_button_set_value(GTK_SPIN_BUTTON(separator_get_last()->separator_padding_x), atoi(value1));
         if (value2)
             gtk_spin_button_set_value(GTK_SPIN_BUTTON(separator_get_last()->separator_padding_y), atoi(value2));
-    }
 
-    /* Executor */
-    else if (strcmp(key, "execp") == 0) {
+    } else if (strcmp(key, "execp") == 0) {
+        /* Executor */
         execp_create_new();
     } else if (strcmp(key, "execp_name") == 0) {
         gtk_entry_set_text(GTK_ENTRY(execp_get_last()->execp_name), value);
@@ -1971,6 +1963,8 @@ void add_entry(char *key, char *value)
         gtk_spin_button_set_value(GTK_SPIN_BUTTON(execp_get_last()->execp_interval), atoi(value));
     } else if (strcmp(key, "execp_has_icon") == 0) {
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(execp_get_last()->execp_has_icon), atoi(value));
+    } else if (strcmp(key, "execp_isolate") == 0) {
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(execp_get_last()->execp_isolate), atoi(value));
     } else if (strcmp(key, "execp_cache_icon") == 0) {
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(execp_get_last()->execp_cache_icon), atoi(value));
     } else if (strcmp(key, "execp_continuous") == 0) {
@@ -2037,10 +2031,9 @@ void add_entry(char *key, char *value)
         gtk_spin_button_set_value(GTK_SPIN_BUTTON(execp_get_last()->execp_icon_h), atoi(value));
     } else if (strcmp(key, "execp_centered") == 0) {
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(execp_get_last()->execp_centered), atoi(value));
-    }
 
-    /* Button */
-    else if (strcmp(key, "button") == 0) {
+    } else if (strcmp(key, "button") == 0) {
+        /* Button */
         button_create_new();
     } else if (strcmp(key, "button_icon") == 0) {
         gtk_entry_set_text(GTK_ENTRY(button_get_last()->button_icon), value);

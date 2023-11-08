@@ -26,6 +26,9 @@ typedef struct ExecpBackend {
     // Interval in seconds
     int interval;
     int monitor;
+    // Should each panel get a different command
+    // execution if monitor is -1
+    gboolean isolate;
     // 1 if first line of output is an icon path
     gboolean has_icon;
     gboolean cache_icon;
@@ -113,6 +116,8 @@ void default_execp();
 Execp *create_execp();
 
 void destroy_execp(void *obj);
+
+void execp_pre_init();
 
 // Called after the config is read and panel_config is populated, but before panels are created.
 // Initializes the state of the backend items.

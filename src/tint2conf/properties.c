@@ -135,7 +135,7 @@ void create_panel(GtkWidget *parent);
 void create_panel_items(GtkWidget *parent);
 void create_launcher(GtkWidget *parent, GtkWindow *window);
 gchar *get_default_theme_name();
-void icon_theme_changed();
+void icon_theme_changed(gpointer data);
 void load_icons(GtkListStore *apps);
 void create_taskbar(GtkWidget *parent);
 void create_task(GtkWidget *parent);
@@ -4414,6 +4414,23 @@ void create_execp(GtkWidget *notebook, int i)
     gtk_tooltips_set_tip(tooltips,
                          executor->execp_monitor,
                          _("Specifies the monitor on which to place the executor."),
+                         NULL);
+
+    row++, col = 2;
+    label = gtk_label_new(_("Isolate monitors"));
+    gtk_misc_set_alignment(GTK_MISC(label), 0, 0);
+    gtk_widget_show(label);
+    gtk_table_attach(GTK_TABLE(table), label, col, col + 1, row, row + 1, GTK_FILL, 0, 0, 0);
+    col++;
+
+    executor->execp_isolate = gtk_check_button_new();
+    gtk_widget_show(executor->execp_isolate);
+    gtk_table_attach(GTK_TABLE(table), executor->execp_isolate, col, col + 1, row, row + 1, GTK_FILL, 0, 0, 0);
+    col++;
+    gtk_tooltips_set_tip(tooltips,
+                         executor->execp_isolate,
+                         _("If enabled, and the executor is set to show on all monitors, "
+                           "a separate command is run for each monitor."),
                          NULL);
 
     change_paragraph(parent);

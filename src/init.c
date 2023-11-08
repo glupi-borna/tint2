@@ -201,6 +201,7 @@ void init_post_config()
     load_default_task_icon();
 
     XSync(server.display, False);
+    execp_pre_init();
 }
 
 void init_X11_pre_config()
