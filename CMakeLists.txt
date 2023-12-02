@@ -1,6 +1,7 @@
 project( tint2 )
 cmake_minimum_required( VERSION 2.8.5 )
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option( ENABLE_BATTERY "Enable battery status plugin" ON )
 option( ENABLE_TINT2CONF "Enable tint2conf build, a GTK+2 theme configurator for tint2" ON )
 option( ENABLE_EXTRA_THEMES "Install additional tint2 themes" ON )
@@ -283,7 +284,7 @@ endif( RT_LIBRARY )
 target_link_libraries( tint2 m )
 
 add_dependencies( tint2 version )
-set_target_properties( tint2 PROPERTIES COMPILE_FLAGS "-Wall -Wpointer-arith -fno-strict-aliasing -pthread -std=${CSTD} ${ASAN_C_FLAGS} ${TRACING_C_FLAGS}" )
+set_target_properties( tint2 PROPERTIES COMPILE_FLAGS "-Wall -Wpointer-arith -fno-strict-aliasing -pthread -std=${CSTD} ${ASAN_C_FLAGS} -ggdb ${TRACING_C_FLAGS}" )
 set_target_properties( tint2 PROPERTIES LINK_FLAGS "-pthread -fno-strict-aliasing ${ASAN_L_FLAGS} ${BACKTRACE_L_FLAGS}  ${TRACING_L_FLAGS}" )
 
 add_executable(tint2-send src/tint2-send/tint2-send.c)
