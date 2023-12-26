@@ -96,40 +96,34 @@ void cleanup_config()
 
 void get_action(char *event, MouseAction *action)
 {
-    if (strcmp(event, "none") == 0)
-        *action = NONE;
-    else if (strcmp(event, "close") == 0)
-        *action = CLOSE;
-    else if (strcmp(event, "toggle") == 0)
-        *action = TOGGLE;
-    else if (strcmp(event, "iconify") == 0)
-        *action = ICONIFY;
-    else if (strcmp(event, "shade") == 0)
-        *action = SHADE;
-    else if (strcmp(event, "toggle_iconify") == 0)
-        *action = TOGGLE_ICONIFY;
-    else if (strcmp(event, "maximize_restore") == 0)
-        *action = MAXIMIZE_RESTORE;
-    else if (strcmp(event, "desktop_left") == 0)
-        *action = DESKTOP_LEFT;
-    else if (strcmp(event, "desktop_right") == 0)
-        *action = DESKTOP_RIGHT;
-    else if (strcmp(event, "next_task") == 0)
-        *action = NEXT_TASK;
-    else if (strcmp(event, "prev_task") == 0)
-        *action = PREV_TASK;
-    else
-        fprintf(stderr, "tint2: Error: unrecognized action '%s'. Please fix your config file.\n", event);
+    #define ACTION_BIND(name, value) if (strcmp(event, (name)) == 0) { *action = (value); return; }
+
+    ACTION_BIND("none", NONE);
+    ACTION_BIND("close", CLOSE);
+    ACTION_BIND("toggle", TOGGLE);
+    ACTION_BIND("iconify", ICONIFY);
+    ACTION_BIND("shade", SHADE);
+    ACTION_BIND("toggle_iconify", TOGGLE_ICONIFY);
+    ACTION_BIND("maximize_restore", MAXIMIZE_RESTORE);
+    ACTION_BIND("desktop_left", DESKTOP_LEFT);
+    ACTION_BIND("desktop_right", DESKTOP_RIGHT);
+    ACTION_BIND("next_task", NEXT_TASK);
+    ACTION_BIND("prev_task", PREV_TASK);
+    fprintf(stderr, "tint2: Error: unrecognized action '%s'. Please fix your config file.\n", event);
+
+    #undef ACTION_BIND
 }
 
 int get_task_status(char *status)
 {
-    if (strcmp(status, "active") == 0)
-        return TASK_ACTIVE;
-    if (strcmp(status, "iconified") == 0)
-        return TASK_ICONIFIED;
-    if (strcmp(status, "urgent") == 0)
-        return TASK_URGENT;
+    #define RETURNIF(name, value) if (strcmp(status, (name)) == 0) return value;
+
+    RETURNIF("active", TASK_ACTIVE);
+    RETURNIF("iconified", TASK_ICONIFIED);
+    RETURNIF("urgent", TASK_URGENT);
+
+    #undef RETURNIF
+
     return -1;
 }
 
@@ -243,12 +237,47 @@ void add_entry(char *key, char *value)
 {
     char *value1 = 0, *value2 = 0, *value3 = 0;
 
+    #define KEY_IS(name) strcmp(key, (name)) == 0
+
+    #define SET_BG_IDX(VALUE, VARNAME) {\
+        int id = atoi((VALUE)); \
+        id = (id < backgrounds->len && id >= 0) ? id : 0; \
+        (VARNAME) = &g_array_index(backgrounds, Background, id);\
+    }
+
+    #define SIMPLE_INT(KEY, VARIABLE) \
+        else if (KEY_IS((KEY))) { (VARIABLE) = atoi(value); }
+
+    #define SET_STR(VARIABLE) \
+        if (strlen(value) > 0) (VARIABLE) = strdup(value)
+
+    #define SIMPLE_STR(KEY, VARIABLE) \
+        else if (KEY_IS((KEY))) { SET_STR(VARIABLE); }
+
+    #define FREE_STR(KEY, VARIABLE) \
+        else if (KEY_IS((KEY))) { \
+            free_and_null(VARIABLE); \
+            SET_STR(VARIABLE); \
+        }
+
+    #define FREE_STR_SET_FLAG(KEY, VARIABLE, FLAG) \
+        else if (KEY_IS((KEY))) { \
+            free_and_null(VARIABLE); \
+            if (strlen(value) > 0) { \
+                VARIABLE = strdup(value); \
+                FLAG = TRUE; \
+            } \
+        }
+
+
     /* Background and border */
-    if (strcmp(key, "scale_relative_to_dpi") == 0) {
+    if (KEY_IS("scale_relative_to_dpi")) {
         ui_scale_dpi_ref = atof(value);
-    } else if (strcmp(key, "scale_relative_to_screen_height") == 0) {
+
+    } else if (KEY_IS("scale_relative_to_screen_height")) {
         ui_scale_monitor_size_ref = atof(value);
-    } else if (strcmp(key, "rounded") == 0) {
+
+    } else if (KEY_IS("rounded")) {
         // 'rounded' is the first parameter => alloc a new background
         if (backgrounds->len > 0) {
             Background *bg = &g_array_index(backgrounds, Background, backgrounds->len - 1);
@@ -269,106 +298,92 @@ void add_entry(char *key, char *value)
         read_border_color_hover = FALSE;
         read_bg_color_press = FALSE;
         read_border_color_press = FALSE;
-    } else if (strcmp(key, "border_width") == 0) {
+
+    } else if (KEY_IS("border_width")) {
         g_array_index(backgrounds, Background, backgrounds->len - 1).border.width = atoi(value);
-    } else if (strcmp(key, "border_sides") == 0) {
+
+    } else if (KEY_IS("border_sides")) {
         Background *bg = &g_array_index(backgrounds, Background, backgrounds->len - 1);
         bg->border.mask = 0;
-        if (strchr(value, 'l') || strchr(value, 'L'))
-            bg->border.mask |= BORDER_LEFT;
-        if (strchr(value, 'r') || strchr(value, 'R'))
-            bg->border.mask |= BORDER_RIGHT;
-        if (strchr(value, 't') || strchr(value, 'T'))
-            bg->border.mask |= BORDER_TOP;
-        if (strchr(value, 'b') || strchr(value, 'B'))
-            bg->border.mask |= BORDER_BOTTOM;
+
+        #define SET_BORDER(lower, upper, val) \
+        if (strchr(value, (lower)) || strchr(value, (upper))) \
+            bg->border.mask |= (val);
+
+        SET_BORDER('l', 'L', BORDER_LEFT);
+        SET_BORDER('r', 'R', BORDER_RIGHT);
+        SET_BORDER('t', 'T', BORDER_TOP);
+        SET_BORDER('b', 'B', BORDER_BOTTOM);
+        #undef SET_BORDER
+
         if (!bg->border.mask)
             bg->border.width = 0;
-    } else if (strcmp(key, "background_color") == 0) {
-        Background *bg = &g_array_index(backgrounds, Background, backgrounds->len - 1);
-        extract_values(value, &value1, &value2, &value3);
-        get_color(value1, bg->fill_color.rgb);
-        if (value2)
-            bg->fill_color.alpha = (atoi(value2) / 100.0);
-        else
-            bg->fill_color.alpha = 0.5;
-    } else if (strcmp(key, "border_color") == 0) {
-        Background *bg = &g_array_index(backgrounds, Background, backgrounds->len - 1);
-        extract_values(value, &value1, &value2, &value3);
-        get_color(value1, bg->border.color.rgb);
-        if (value2)
-            bg->border.color.alpha = (atoi(value2) / 100.0);
-        else
-            bg->border.color.alpha = 0.5;
-    } else if (strcmp(key, "background_color_hover") == 0) {
-        Background *bg = &g_array_index(backgrounds, Background, backgrounds->len - 1);
-        extract_values(value, &value1, &value2, &value3);
-        get_color(value1, bg->fill_color_hover.rgb);
-        if (value2)
-            bg->fill_color_hover.alpha = (atoi(value2) / 100.0);
-        else
-            bg->fill_color_hover.alpha = 0.5;
+
+    #define SET_BG(color_var) \
+        Background *bg = &g_array_index(backgrounds, Background, backgrounds->len - 1); \
+        extract_values(value, &value1, &value2, &value3); \
+        get_color(value1, (color_var).rgb); \
+        if (value2) \
+            (color_var).alpha = (atoi(value2) / 100.0); \
+        else \
+            (color_var).alpha = 0.5;
+
+    } else if (KEY_IS("background_color")) {
+        SET_BG(bg->fill_color);
+
+    } else if (KEY_IS("border_color")) {
+        SET_BG(bg->border.color);
+
+    } else if (KEY_IS("background_color_hover")) {
+        SET_BG(bg->fill_color_hover);
         read_bg_color_hover = 1;
-    } else if (strcmp(key, "border_color_hover") == 0) {
-        Background *bg = &g_array_index(backgrounds, Background, backgrounds->len - 1);
-        extract_values(value, &value1, &value2, &value3);
-        get_color(value1, bg->border_color_hover.rgb);
-        if (value2)
-            bg->border_color_hover.alpha = (atoi(value2) / 100.0);
-        else
-            bg->border_color_hover.alpha = 0.5;
+
+    } else if (KEY_IS("border_color_hover")) {
+        SET_BG(bg->border_color_hover);
         read_border_color_hover = 1;
-    } else if (strcmp(key, "background_color_pressed") == 0) {
-        Background *bg = &g_array_index(backgrounds, Background, backgrounds->len - 1);
-        extract_values(value, &value1, &value2, &value3);
-        get_color(value1, bg->fill_color_pressed.rgb);
-        if (value2)
-            bg->fill_color_pressed.alpha = (atoi(value2) / 100.0);
-        else
-            bg->fill_color_pressed.alpha = 0.5;
+
+    } else if (KEY_IS("background_color_pressed")) {
+        SET_BG(bg->fill_color_pressed);
         read_bg_color_press = 1;
-    } else if (strcmp(key, "border_color_pressed") == 0) {
-        Background *bg = &g_array_index(backgrounds, Background, backgrounds->len - 1);
-        extract_values(value, &value1, &value2, &value3);
-        get_color(value1, bg->border_color_pressed.rgb);
-        if (value2)
-            bg->border_color_pressed.alpha = (atoi(value2) / 100.0);
-        else
-            bg->border_color_pressed.alpha = 0.5;
+
+    } else if (KEY_IS("border_color_pressed")) {
+        SET_BG(bg->border_color_pressed);
         read_border_color_press = 1;
-    } else if (strcmp(key, "gradient_id") == 0) {
-        Background *bg = &g_array_index(backgrounds, Background, backgrounds->len - 1);
-        int id = atoi(value);
-        id = (id < gradients->len && id >= 0) ? id : -1;
-        if (id >= 0)
-            bg->gradients[MOUSE_NORMAL] = &g_array_index(gradients, GradientClass, id);
-    } else if (strcmp(key, "gradient_id_hover") == 0 || strcmp(key, "hover_gradient_id") == 0) {
-        Background *bg = &g_array_index(backgrounds, Background, backgrounds->len - 1);
-        int id = atoi(value);
-        id = (id < gradients->len && id >= 0) ? id : -1;
-        if (id >= 0)
-            bg->gradients[MOUSE_OVER] = &g_array_index(gradients, GradientClass, id);
-    } else if (strcmp(key, "gradient_id_pressed") == 0 || strcmp(key, "pressed_gradient_id") == 0) {
-        Background *bg = &g_array_index(backgrounds, Background, backgrounds->len - 1);
-        int id = atoi(value);
-        id = (id < gradients->len && id >= 0) ? id : -1;
-        if (id >= 0)
-            bg->gradients[MOUSE_DOWN] = &g_array_index(gradients, GradientClass, id);
-    } else if (strcmp(key, "border_content_tint_weight") == 0) {
+    #undef SET_BG
+
+    #define SET_BG_GRADIENT(type) \
+        Background *bg = &g_array_index(backgrounds, Background, backgrounds->len - 1); \
+        int id = atoi(value); \
+        id = (id < gradients->len && id >= 0) ? id : -1; \
+        if (id >= 0) \
+            bg->gradients[(type)] = &g_array_index(gradients, GradientClass, id);
+
+    } else if (KEY_IS("gradient_id")) {
+        SET_BG_GRADIENT(MOUSE_NORMAL);
+
+    } else if (KEY_IS("gradient_id_hover") || KEY_IS("hover_gradient_id")) {
+        SET_BG_GRADIENT(MOUSE_OVER);
+
+    } else if (KEY_IS("gradient_id_pressed") || KEY_IS("pressed_gradient_id")) {
+        SET_BG_GRADIENT(MOUSE_DOWN);
+    #undef SET_BG_GRADIENT
+
+    } else if (KEY_IS("border_content_tint_weight")) {
         Background *bg = &g_array_index(backgrounds, Background, backgrounds->len - 1);
         bg->border_content_tint_weight = MAX(0.0, MIN(1.0, atoi(value) / 100.));
-    } else if (strcmp(key, "background_content_tint_weight") == 0) {
+
+    } else if (KEY_IS("background_content_tint_weight")) {
         Background *bg = &g_array_index(backgrounds, Background, backgrounds->len - 1);
         bg->fill_content_tint_weight = MAX(0.0, MIN(1.0, atoi(value) / 100.));
     }
 
     /* Gradients */
-    else if (strcmp(key, "gradient") == 0) {
+    else if (KEY_IS("gradient")) {
         // Create a new gradient
         GradientClass g;
         init_gradient(&g, gradient_type_from_string(value));
         g_array_append_val(gradients, g);
-    } else if (strcmp(key, "start_color") == 0) {
+    } else if (KEY_IS("start_color")) {
         GradientClass *g = &g_array_index(gradients, GradientClass, gradients->len - 1);
         extract_values(value, &value1, &value2, &value3);
         get_color(value1, g->start_color.rgb);
@@ -376,7 +391,7 @@ void add_entry(char *key, char *value)
             g->start_color.alpha = (atoi(value2) / 100.0);
         else
             g->start_color.alpha = 0.5;
-    } else if (strcmp(key, "end_color") == 0) {
+    } else if (KEY_IS("end_color")) {
         GradientClass *g = &g_array_index(gradients, GradientClass, gradients->len - 1);
         extract_values(value, &value1, &value2, &value3);
         get_color(value1, g->end_color.rgb);
@@ -384,7 +399,7 @@ void add_entry(char *key, char *value)
             g->end_color.alpha = (atoi(value2) / 100.0);
         else
             g->end_color.alpha = 0.5;
-    } else if (strcmp(key, "color_stop") == 0) {
+    } else if (KEY_IS("color_stop")) {
         GradientClass *g = &g_array_index(gradients, GradientClass, gradients->len - 1);
         extract_values(value, &value1, &value2, &value3);
         ColorStop *color_stop = (ColorStop *)calloc(1, sizeof(ColorStop));
@@ -398,11 +413,25 @@ void add_entry(char *key, char *value)
     }
 
     /* Panel */
-    else if (strcmp(key, "panel_monitor") == 0) {
+    SIMPLE_INT("panel_shrink", panel_shrink)
+    SIMPLE_INT("font_shadow", panel_config.font_shadow)
+    SIMPLE_INT("wm_menu", wm_menu)
+    SIMPLE_INT("panel_dock", panel_dock)
+    SIMPLE_INT("panel_pivot_struts", panel_pivot_struts)
+    SIMPLE_INT("urgent_nb_of_blink", max_tick_urgent)
+    SIMPLE_INT("urgent_nb_of_blink", max_tick_urgent)
+    SIMPLE_INT("urgent_nb_of_blink", max_tick_urgent)
+    SIMPLE_INT("disable_transparency", server.disable_transparency)
+
+    SIMPLE_STR("panel_lclick_command", panel_config.lclick_command)
+    SIMPLE_STR("panel_mclick_command", panel_config.mclick_command)
+    SIMPLE_STR("panel_rclick_command", panel_config.rclick_command)
+    SIMPLE_STR("panel_uwheel_command", panel_config.uwheel_command)
+    SIMPLE_STR("panel_dwheel_command", panel_config.dwheel_command)
+
+    else if (KEY_IS("panel_monitor")) {
         panel_config.monitor = config_get_monitor(value);
-    } else if (strcmp(key, "panel_shrink") == 0) {
-        panel_shrink = atoi(value);
-    } else if (strcmp(key, "panel_size") == 0) {
+    } else if (KEY_IS("panel_size")) {
         extract_values(value, &value1, &value2, &value3);
 
         char *b;
@@ -423,7 +452,7 @@ void add_entry(char *key, char *value)
             }
             panel_config.area.height = atoi(value2);
         }
-    } else if (strcmp(key, "panel_items") == 0) {
+    } else if (KEY_IS("panel_items")) {
         new_config_file = TRUE;
         free_and_null(panel_items_order);
         panel_items_order = strdup(value);
@@ -454,19 +483,22 @@ void add_entry(char *key, char *value)
             if (panel_items_order[j] == 'C')
                 clock_enabled = 1;
         }
-    } else if (strcmp(key, "panel_margin") == 0) {
+
+    } else if (KEY_IS("panel_margin")) {
         extract_values(value, &value1, &value2, &value3);
         panel_config.marginx = atoi(value1);
         if (value2)
             panel_config.marginy = atoi(value2);
-    } else if (strcmp(key, "panel_padding") == 0) {
+
+    } else if (KEY_IS("panel_padding")) {
         extract_values(value, &value1, &value2, &value3);
         panel_config.area.paddingxlr = panel_config.area.paddingx = atoi(value1);
         if (value2)
             panel_config.area.paddingy = atoi(value2);
         if (value3)
             panel_config.area.paddingx = atoi(value3);
-    } else if (strcmp(key, "panel_position") == 0) {
+
+    } else if (KEY_IS("panel_position")) {
         read_panel_position = TRUE;
         extract_values(value, &value1, &value2, &value3);
         if (strcmp(value1, "top") == 0)
@@ -498,174 +530,123 @@ void add_entry(char *key, char *value)
             else
                 panel_horizontal = 1;
         }
-    } else if (strcmp(key, "font_shadow") == 0)
-        panel_config.font_shadow = atoi(value);
-    else if (strcmp(key, "panel_background_id") == 0) {
-        int id = atoi(value);
-        id = (id < backgrounds->len && id >= 0) ? id : 0;
-        panel_config.area.bg = &g_array_index(backgrounds, Background, id);
-    } else if (strcmp(key, "wm_menu") == 0)
-        wm_menu = atoi(value);
-    else if (strcmp(key, "panel_dock") == 0)
-        panel_dock = atoi(value);
-    else if (strcmp(key, "panel_pivot_struts") == 0)
-        panel_pivot_struts = atoi(value);
-    else if (strcmp(key, "urgent_nb_of_blink") == 0)
-        max_tick_urgent = atoi(value);
-    else if (strcmp(key, "panel_layer") == 0) {
+    }
+
+    else if (KEY_IS("panel_background_id"))
+        SET_BG_IDX(value, panel_config.area.bg)
+
+    else if (KEY_IS("panel_layer")) {
         if (strcmp(value, "bottom") == 0)
             panel_layer = BOTTOM_LAYER;
         else if (strcmp(value, "top") == 0)
             panel_layer = TOP_LAYER;
         else
             panel_layer = NORMAL_LAYER;
-    } else if (strcmp(key, "disable_transparency") == 0) {
-        server.disable_transparency = atoi(value);
-    } else if (strcmp(key, "panel_window_name") == 0) {
+
+    } else if (KEY_IS("panel_window_name")) {
         if (strlen(value) > 0) {
             free(panel_window_name);
             panel_window_name = strdup(value);
         }
-    } else if (strcmp(key, "panel_lclick_command") == 0) {
-        if (strlen(value) > 0)
-            panel_config.lclick_command = strdup(value);
-    } else if (strcmp(key, "panel_mclick_command") == 0) {
-        if (strlen(value) > 0)
-            panel_config.mclick_command = strdup(value);
-    } else if (strcmp(key, "panel_rclick_command") == 0) {
-        if (strlen(value) > 0)
-            panel_config.rclick_command = strdup(value);
-    } else if (strcmp(key, "panel_uwheel_command") == 0) {
-        if (strlen(value) > 0)
-            panel_config.uwheel_command = strdup(value);
-    } else if (strcmp(key, "panel_dwheel_command") == 0) {
-        if (strlen(value) > 0)
-            panel_config.dwheel_command = strdup(value);
     }
 
-
     /* Battery */
-    else if (strcmp(key, "battery_low_status") == 0) {
-#ifdef ENABLE_BATTERY
+
+    #ifdef ENABLE_BATTERY
+    #define BATTERY_CONFIG(key, code) \
+        else if (KEY_IS(key)) { code }
+    #else
+        else if (KEY_IS(key)) { }
+    #endif
+
+    BATTERY_CONFIG("battery_low_status", {
         battery_low_status = atoi(value);
         if (battery_low_status < 0 || battery_low_status > 100)
             battery_low_status = 0;
-#endif
-    } else if (strcmp(key, "battery_lclick_command") == 0) {
-#ifdef ENABLE_BATTERY
-        if (strlen(value) > 0)
-            battery_lclick_command = strdup(value);
-#endif
-    } else if (strcmp(key, "battery_mclick_command") == 0) {
-#ifdef ENABLE_BATTERY
-        if (strlen(value) > 0)
-            battery_mclick_command = strdup(value);
-#endif
-    } else if (strcmp(key, "battery_rclick_command") == 0) {
-#ifdef ENABLE_BATTERY
-        if (strlen(value) > 0)
-            battery_rclick_command = strdup(value);
-#endif
-    } else if (strcmp(key, "battery_uwheel_command") == 0) {
-#ifdef ENABLE_BATTERY
-        if (strlen(value) > 0)
-            battery_uwheel_command = strdup(value);
-#endif
-    } else if (strcmp(key, "battery_dwheel_command") == 0) {
-#ifdef ENABLE_BATTERY
-        if (strlen(value) > 0)
-            battery_dwheel_command = strdup(value);
-#endif
-    } else if (strcmp(key, "battery_low_cmd") == 0) {
-#ifdef ENABLE_BATTERY
-        if (strlen(value) > 0)
-            battery_low_cmd = strdup(value);
-#endif
-    } else if (strcmp(key, "battery_full_cmd") == 0) {
-#ifdef ENABLE_BATTERY
-        if (strlen(value) > 0)
-            battery_full_cmd = strdup(value);
-#endif
-    } else if (strcmp(key, "ac_connected_cmd") == 0) {
-#ifdef ENABLE_BATTERY
-        if (strlen(value) > 0)
-            ac_connected_cmd = strdup(value);
-#endif
-    } else if (strcmp(key, "ac_disconnected_cmd") == 0) {
-#ifdef ENABLE_BATTERY
-        if (strlen(value) > 0)
-            ac_disconnected_cmd = strdup(value);
-#endif
-    } else if (strcmp(key, "bat1_font") == 0) {
-#ifdef ENABLE_BATTERY
+    })
+
+    BATTERY_CONFIG("battery_lclick_command", SET_STR(battery_lclick_command);)
+    BATTERY_CONFIG("battery_mclick_command", SET_STR(battery_mclick_command);)
+    BATTERY_CONFIG("battery_rclick_command", SET_STR(battery_rclick_command);)
+    BATTERY_CONFIG("battery_uwheel_command", SET_STR(battery_uwheel_command);)
+    BATTERY_CONFIG("battery_dwheel_command", SET_STR(battery_dwheel_command);)
+    BATTERY_CONFIG("battery_low_command", SET_STR(battery_low_cmd);)
+    BATTERY_CONFIG("battery_full_command", SET_STR(battery_full_cmd);)
+    BATTERY_CONFIG("battery_full_command", SET_STR(battery_full_cmd);)
+    BATTERY_CONFIG("ac_connected_cmd", SET_STR(ac_connected_cmd);)
+    BATTERY_CONFIG("ac_disconnected_cmd", SET_STR(ac_disconnected_cmd);)
+
+
+    BATTERY_CONFIG("bat1_font", {
         bat1_font_desc = pango_font_description_from_string(value);
         bat1_has_font = TRUE;
-#endif
-    } else if (strcmp(key, "bat2_font") == 0) {
-#ifdef ENABLE_BATTERY
+    })
+
+    BATTERY_CONFIG("bat2_font", {
         bat2_font_desc = pango_font_description_from_string(value);
         bat2_has_font = TRUE;
-#endif
-    } else if (strcmp(key, "bat1_format") == 0) {
-#ifdef ENABLE_BATTERY
+    })
+
+    BATTERY_CONFIG("bat1_format", {
         if (strlen(value) > 0) {
             free(bat1_format);
             bat1_format = strdup(value);
             battery_enabled = 1;
         }
-#endif
-    } else if (strcmp(key, "bat2_format") == 0) {
-#ifdef ENABLE_BATTERY
+    })
+
+    BATTERY_CONFIG("bat2_format", {
         if (strlen(value) > 0) {
             free(bat2_format);
             bat2_format = strdup(value);
+            battery_enabled = 1;
         }
-#endif
-    } else if (strcmp(key, "battery_font_color") == 0) {
-#ifdef ENABLE_BATTERY
+    })
+
+    BATTERY_CONFIG("battery_font_color", {
         extract_values(value, &value1, &value2, &value3);
         get_color(value1, panel_config.battery.font_color.rgb);
         if (value2)
             panel_config.battery.font_color.alpha = (atoi(value2) / 100.0);
         else
             panel_config.battery.font_color.alpha = 0.5;
-#endif
-    } else if (strcmp(key, "battery_padding") == 0) {
-#ifdef ENABLE_BATTERY
+    })
+
+    BATTERY_CONFIG("battery_padding", {
         extract_values(value, &value1, &value2, &value3);
         panel_config.battery.area.paddingxlr = panel_config.battery.area.paddingx = atoi(value1);
         if (value2)
             panel_config.battery.area.paddingy = atoi(value2);
         if (value3)
             panel_config.battery.area.paddingx = atoi(value3);
-#endif
-    } else if (strcmp(key, "battery_background_id") == 0) {
-#ifdef ENABLE_BATTERY
-        int id = atoi(value);
-        id = (id < backgrounds->len && id >= 0) ? id : 0;
-        panel_config.battery.area.bg = &g_array_index(backgrounds, Background, id);
-#endif
-    } else if (strcmp(key, "battery_hide") == 0) {
-#ifdef ENABLE_BATTERY
+    })
+
+    BATTERY_CONFIG("battery_background_id", {
+        SET_BG_IDX(value, panel_config.battery.area.bg)
+    })
+
+    BATTERY_CONFIG("battery_hide", {
         percentage_hide = atoi(value);
         if (percentage_hide == 0)
             percentage_hide = 101;
-#endif
-    } else if (strcmp(key, "battery_tooltip") == 0) {
-#ifdef ENABLE_BATTERY
+    })
+
+    BATTERY_CONFIG("battery_tooltip", {
         battery_tooltip_enabled = atoi(value);
-#endif
-    }
+    })
+
+    #undef BATTERY_CONFIG
 
     /* Separator */
-    else if (strcmp(key, "separator") == 0) {
+    SIMPLE_INT("separator_size", get_or_create_last_separator()->thickness)
+
+    else if (KEY_IS("separator")) {
         panel_config.separator_list = g_list_append(panel_config.separator_list, create_separator());
-    } else if (strcmp(key, "separator_background_id") == 0) {
-        Separator *separator = get_or_create_last_separator();
-        int id = atoi(value);
-        id = (id < backgrounds->len && id >= 0) ? id : 0;
-        separator->area.bg = &g_array_index(backgrounds, Background, id);
-    } else if (strcmp(key, "separator_color") == 0) {
+
+    } else if (KEY_IS("separator_background_id")) {
+        SET_BG_IDX(value, get_or_create_last_separator()->area.bg);
+
+    } else if (KEY_IS("separator_color")) {
         Separator *separator = get_or_create_last_separator();
         extract_values(value, &value1, &value2, &value3);
         get_color(value1, separator->color.rgb);
@@ -673,7 +654,8 @@ void add_entry(char *key, char *value)
             separator->color.alpha = (atoi(value2) / 100.0);
         else
             separator->color.alpha = 0.5;
-    } else if (strcmp(key, "separator_style") == 0) {
+
+    } else if (KEY_IS("separator_style")) {
         Separator *separator = get_or_create_last_separator();
         if (g_str_equal(value, "empty"))
             separator->style = SEPARATOR_EMPTY;
@@ -683,10 +665,8 @@ void add_entry(char *key, char *value)
             separator->style = SEPARATOR_DOTS;
         else
             fprintf(stderr, RED "tint2: Invalid separator_style value: %s" RESET "\n", value);
-    } else if (strcmp(key, "separator_size") == 0) {
-        Separator *separator = get_or_create_last_separator();
-        separator->thickness = atoi(value);
-    } else if (strcmp(key, "separator_padding") == 0) {
+
+    } else if (KEY_IS("separator_padding")) {
         Separator *separator = get_or_create_last_separator();
         extract_values(value, &value1, &value2, &value3);
         separator->area.paddingxlr = separator->area.paddingx = atoi(value1);
@@ -697,9 +677,27 @@ void add_entry(char *key, char *value)
     }
 
     /* Execp */
-    else if (strcmp(key, "execp") == 0) {
+    SIMPLE_INT("execp_isolate", get_or_create_last_execp()->backend->isolate)
+    SIMPLE_INT("execp_has_icon", get_or_create_last_execp()->backend->has_icon)
+    SIMPLE_INT("execp_continuous", get_or_create_last_execp()->backend->continuous)
+    SIMPLE_INT("execp_markup", get_or_create_last_execp()->backend->has_markup)
+    SIMPLE_INT("execp_cache_icon", get_or_create_last_execp()->backend->cache_icon)
+    SIMPLE_INT("execp_centered", get_or_create_last_execp()->backend->centered)
+
+    FREE_STR("execp_command", get_or_create_last_execp()->backend->command)
+    FREE_STR("execp_lclick_command", get_or_create_last_execp()->backend->lclick_command)
+    FREE_STR("execp_mclick_command", get_or_create_last_execp()->backend->mclick_command)
+    FREE_STR("execp_rclick_command", get_or_create_last_execp()->backend->rclick_command)
+    FREE_STR("execp_uwheel_command", get_or_create_last_execp()->backend->uwheel_command)
+    FREE_STR("execp_dwheel_command", get_or_create_last_execp()->backend->dwheel_command)
+    FREE_STR_SET_FLAG("execp_tooltip",
+        get_or_create_last_execp()->backend->tooltip,
+        get_or_create_last_execp()->backend->has_user_tooltip)
+
+    else if (KEY_IS("execp")) {
         panel_config.execp_list = g_list_append(panel_config.execp_list, create_execp());
-    } else if (strcmp(key, "execp_name") == 0) {
+
+    } else if (KEY_IS("execp_name")) {
         Execp *execp = get_or_create_last_execp();
         execp->backend->name[0] = 0;
         if (strlen(value) > sizeof(execp->backend->name) - 1)
@@ -707,15 +705,8 @@ void add_entry(char *key, char *value)
                     sizeof(execp->backend->name) - 1, value);
         else if (strlen(value) > 0)
             snprintf(execp->backend->name, sizeof(execp->backend->name), value);
-    } else if (strcmp(key, "execp_command") == 0) {
-        Execp *execp = get_or_create_last_execp();
-        free_and_null(execp->backend->command);
-        if (strlen(value) > 0)
-            execp->backend->command = strdup(value);
-    } else if (strcmp(key, "execp_isolate") == 0) {
-        Execp *execp = get_or_create_last_execp();
-        execp->backend->isolate = atoi(value);
-    } else if (strcmp(key, "execp_interval") == 0) {
+
+    } else if (KEY_IS("execp_interval")) {
         Execp *execp = get_or_create_last_execp();
         execp->backend->interval = 0;
         int v = atoi(value);
@@ -724,32 +715,18 @@ void add_entry(char *key, char *value)
         } else {
             execp->backend->interval = v;
         }
-    } else if (strcmp(key, "execp_monitor") == 0) {
+
+    } else if (KEY_IS("execp_monitor")) {
         Execp *execp = get_or_create_last_execp();
         execp->backend->monitor = config_get_monitor(value);
-    } else if (strcmp(key, "execp_has_icon") == 0) {
-        Execp *execp = get_or_create_last_execp();
-        execp->backend->has_icon = atoi(value);
-    } else if (strcmp(key, "execp_continuous") == 0) {
-        Execp *execp = get_or_create_last_execp();
-        execp->backend->continuous = atoi(value);
-    } else if (strcmp(key, "execp_markup") == 0) {
-        Execp *execp = get_or_create_last_execp();
-        execp->backend->has_markup = atoi(value);
-    } else if (strcmp(key, "execp_cache_icon") == 0) {
-        Execp *execp = get_or_create_last_execp();
-        execp->backend->cache_icon = atoi(value);
-    } else if (strcmp(key, "execp_tooltip") == 0) {
-        Execp *execp = get_or_create_last_execp();
-        free_and_null(execp->backend->tooltip);
-        execp->backend->tooltip = strdup(value);
-        execp->backend->has_user_tooltip = TRUE;
-    } else if (strcmp(key, "execp_font") == 0) {
+
+    } else if (KEY_IS("execp_font")) {
         Execp *execp = get_or_create_last_execp();
         pango_font_description_free(execp->backend->font_desc);
         execp->backend->font_desc = pango_font_description_from_string(value);
         execp->backend->has_font = TRUE;
-    } else if (strcmp(key, "execp_font_color") == 0) {
+
+    } else if (KEY_IS("execp_font_color")) {
         Execp *execp = get_or_create_last_execp();
         extract_values(value, &value1, &value2, &value3);
         get_color(value1, execp->backend->font_color.rgb);
@@ -757,7 +734,8 @@ void add_entry(char *key, char *value)
             execp->backend->font_color.alpha = atoi(value2) / 100.0;
         else
             execp->backend->font_color.alpha = 0.5;
-    } else if (strcmp(key, "execp_padding") == 0) {
+
+    } else if (KEY_IS("execp_padding")) {
         Execp *execp = get_or_create_last_execp();
         extract_values(value, &value1, &value2, &value3);
         execp->backend->paddingxlr = execp->backend->paddingx = atoi(value1);
@@ -767,15 +745,11 @@ void add_entry(char *key, char *value)
             execp->backend->paddingy = 0;
         if (value3)
             execp->backend->paddingx = atoi(value3);
-    } else if (strcmp(key, "execp_background_id") == 0) {
-        Execp *execp = get_or_create_last_execp();
-        int id = atoi(value);
-        id = (id < backgrounds->len && id >= 0) ? id : 0;
-        execp->backend->bg = &g_array_index(backgrounds, Background, id);
-    } else if (strcmp(key, "execp_centered") == 0) {
-        Execp *execp = get_or_create_last_execp();
-        execp->backend->centered = atoi(value);
-    } else if (strcmp(key, "execp_icon_w") == 0) {
+
+    } else if (KEY_IS("execp_background_id")) {
+        SET_BG_IDX(value, get_or_create_last_execp()->backend->bg);
+
+    } else if (KEY_IS("execp_icon_w")) {
         Execp *execp = get_or_create_last_execp();
         int v = atoi(value);
         if (v < 0) {
@@ -783,7 +757,8 @@ void add_entry(char *key, char *value)
         } else {
             execp->backend->icon_w = v;
         }
-    } else if (strcmp(key, "execp_icon_h") == 0) {
+
+    } else if (KEY_IS("execp_icon_h")) {
         Execp *execp = get_or_create_last_execp();
         int v = atoi(value);
         if (v < 0) {
@@ -791,59 +766,33 @@ void add_entry(char *key, char *value)
         } else {
             execp->backend->icon_h = v;
         }
-    } else if (strcmp(key, "execp_lclick_command") == 0) {
-        Execp *execp = get_or_create_last_execp();
-        free_and_null(execp->backend->lclick_command);
-        if (strlen(value) > 0)
-            execp->backend->lclick_command = strdup(value);
-    } else if (strcmp(key, "execp_mclick_command") == 0) {
-        Execp *execp = get_or_create_last_execp();
-        free_and_null(execp->backend->mclick_command);
-        if (strlen(value) > 0)
-            execp->backend->mclick_command = strdup(value);
-    } else if (strcmp(key, "execp_rclick_command") == 0) {
-        Execp *execp = get_or_create_last_execp();
-        free_and_null(execp->backend->rclick_command);
-        if (strlen(value) > 0)
-            execp->backend->rclick_command = strdup(value);
-    } else if (strcmp(key, "execp_uwheel_command") == 0) {
-        Execp *execp = get_or_create_last_execp();
-        free_and_null(execp->backend->uwheel_command);
-        if (strlen(value) > 0)
-            execp->backend->uwheel_command = strdup(value);
-    } else if (strcmp(key, "execp_dwheel_command") == 0) {
-        Execp *execp = get_or_create_last_execp();
-        free_and_null(execp->backend->dwheel_command);
-        if (strlen(value) > 0)
-            execp->backend->dwheel_command = strdup(value);
     }
 
     /* Button */
-    else if (strcmp(key, "button") == 0) {
+    FREE_STR("button_text", get_or_create_last_button()->backend->text)
+    FREE_STR("button_tooltip", get_or_create_last_button()->backend->tooltip)
+    FREE_STR("button_lclick_command", get_or_create_last_button()->backend->lclick_command)
+    FREE_STR("button_mclick_command", get_or_create_last_button()->backend->mclick_command)
+    FREE_STR("button_rclick_command", get_or_create_last_button()->backend->rclick_command)
+    FREE_STR("button_uwheel_command", get_or_create_last_button()->backend->uwheel_command)
+    FREE_STR("button_dwheel_command", get_or_create_last_button()->backend->dwheel_command)
+
+    else if (KEY_IS("button")) {
         panel_config.button_list = g_list_append(panel_config.button_list, create_button());
-    } else if (strcmp(key, "button_icon") == 0) {
+
+    } else if (KEY_IS("button_icon")) {
         if (strlen(value)) {
             Button *button = get_or_create_last_button();
             button->backend->icon_name = expand_tilde(value);
         }
-    } else if (strcmp(key, "button_text") == 0) {
-        if (strlen(value)) {
-            Button *button = get_or_create_last_button();
-            free_and_null(button->backend->text);
-            button->backend->text = strdup(value);
-        }
-    } else if (strcmp(key, "button_tooltip") == 0) {
-        if (strlen(value)) {
-            Button *button = get_or_create_last_button();
-            free_and_null(button->backend->tooltip);
-            button->backend->tooltip = strdup(value);
-        }
-    } else if (strcmp(key, "button_font") == 0) {
+
+    } else if (KEY_IS("button_font")) {
         Button *button = get_or_create_last_button();
         pango_font_description_free(button->backend->font_desc);
         button->backend->font_desc = pango_font_description_from_string(value);
         button->backend->has_font = TRUE;
-    } else if (strcmp(key, "button_font_color") == 0) {
+
+    } else if (KEY_IS("button_font_color")) {
         Button *button = get_or_create_last_button();
         extract_values(value, &value1, &value2, &value3);
         get_color(value1, button->backend->font_color.rgb);
@@ -851,7 +800,8 @@ void add_entry(char *key, char *value)
             button->backend->font_color.alpha = atoi(value2) / 100.0;
         else
             button->backend->font_color.alpha = 0.5;
-    } else if (strcmp(key, "button_padding") == 0) {
+
+    } else if (KEY_IS("button_padding")) {
         Button *button = get_or_create_last_button();
         extract_values(value, &value1, &value2, &value3);
         button->backend->paddingxlr = button->backend->paddingx = atoi(value1);
@@ -861,47 +811,32 @@ void add_entry(char *key, char *value)
             button->backend->paddingy = 0;
         if (value3)
             button->backend->paddingx = atoi(value3);
-    } else if (strcmp(key, "button_max_icon_size") == 0) {
+
+    } else if (KEY_IS("button_max_icon_size")) {
         Button *button = get_or_create_last_button();
         extract_values(value, &value1, &value2, &value3);
         button->backend->max_icon_size = MAX(0, atoi(value));
-    } else if (strcmp(key, "button_background_id") == 0) {
-        Button *button = get_or_create_last_button();
-        int id = atoi(value);
-        id = (id < backgrounds->len && id >= 0) ? id : 0;
-        button->backend->bg = &g_array_index(backgrounds, Background, id);
-    } else if (strcmp(key, "button_centered") == 0) {
+    } else if (KEY_IS("button_background_id")) {
+        SET_BG_IDX(value, get_or_create_last_button()->backend->bg);
+
+    } else if (KEY_IS("button_centered")) {
         Button *button = get_or_create_last_button();
         button->backend->centered = atoi(value);
-    } else if (strcmp(key, "button_lclick_command") == 0) {
-        Button *button = get_or_create_last_button();
-        free_and_null(button->backend->lclick_command);
-        if (strlen(value) > 0)
-            button->backend->lclick_command = strdup(value);
-    } else if (strcmp(key, "button_mclick_command") == 0) {
-        Button *button = get_or_create_last_button();
-        free_and_null(button->backend->mclick_command);
-        if (strlen(value) > 0)
-            button->backend->mclick_command = strdup(value);
-    } else if (strcmp(key, "button_rclick_command") == 0) {
-        Button *button = get_or_create_last_button();
-        free_and_null(button->backend->rclick_command);
-        if (strlen(value) > 0)
-            button->backend->rclick_command = strdup(value);
-    } else if (strcmp(key, "button_uwheel_command") == 0) {
-        Button *button = get_or_create_last_button();
-        free_and_null(button->backend->uwheel_command);
-        if (strlen(value) > 0)
-            button->backend->uwheel_command = strdup(value);
-    } else if (strcmp(key, "button_dwheel_command") == 0) {
-        Button *button = get_or_create_last_button();
-        free_and_null(button->backend->dwheel_command);
-        if (strlen(value) > 0)
-            button->backend->dwheel_command = strdup(value);
     }
 
     /* Clock */
-    else if (strcmp(key, "time1_format") == 0) {
+    SIMPLE_STR("time2_format", time2_format)
+    SIMPLE_STR("time1_timezone", time1_timezone)
+    SIMPLE_STR("time2_timezone", time2_timezone)
+    SIMPLE_STR("clock_tooltip", time_tooltip_format)
+    SIMPLE_STR("clock_tooltip_timezone", time_tooltip_timezone)
+    SIMPLE_STR("clock_lclick_command", clock_lclick_command)
+    SIMPLE_STR("clock_rclick_command", clock_rclick_command)
+    SIMPLE_STR("clock_mclick_command", clock_mclick_command)
+    SIMPLE_STR("clock_uwheel_command", clock_uwheel_command)
+    SIMPLE_STR("clock_dwheel_command", clock_dwheel_command)
+
+    else if (KEY_IS("time1_format")) {
         if (!new_config_file) {
             clock_enabled = TRUE;
             if (panel_items_order) {
@@ -917,133 +852,103 @@ void add_entry(char *key, char *value)
             time1_format = strdup(value);
             clock_enabled = TRUE;
         }
-    } else if (strcmp(key, "time2_format") == 0) {
-        if (strlen(value) > 0)
-            time2_format = strdup(value);
-    } else if (strcmp(key, "time1_font") == 0) {
+
+    } else if (KEY_IS("time1_font")) {
         time1_font_desc = pango_font_description_from_string(value);
         time1_has_font = TRUE;
-    } else if (strcmp(key, "time1_timezone") == 0) {
-        if (strlen(value) > 0)
-            time1_timezone = strdup(value);
-    } else if (strcmp(key, "time2_timezone") == 0) {
-        if (strlen(value) > 0)
-            time2_timezone = strdup(value);
-    } else if (strcmp(key, "time2_font") == 0) {
+
+    } else if (KEY_IS("time2_font")) {
         time2_font_desc = pango_font_description_from_string(value);
         time2_has_font = TRUE;
-    } else if (strcmp(key, "clock_font_color") == 0) {
+
+    } else if (KEY_IS("clock_font_color")) {
         extract_values(value, &value1, &value2, &value3);
         get_color(value1, panel_config.clock.font.rgb);
         if (value2)
             panel_config.clock.font.alpha = (atoi(value2) / 100.0);
         else
             panel_config.clock.font.alpha = 0.5;
-    } else if (strcmp(key, "clock_padding") == 0) {
+
+    } else if (KEY_IS("clock_padding")) {
         extract_values(value, &value1, &value2, &value3);
         panel_config.clock.area.paddingxlr = panel_config.clock.area.paddingx = atoi(value1);
         if (value2)
             panel_config.clock.area.paddingy = atoi(value2);
         if (value3)
             panel_config.clock.area.paddingx = atoi(value3);
-    } else if (strcmp(key, "clock_background_id") == 0) {
-        int id = atoi(value);
-        id = (id < backgrounds->len && id >= 0) ? id : 0;
-        panel_config.clock.area.bg = &g_array_index(backgrounds, Background, id);
-    } else if (strcmp(key, "clock_tooltip") == 0) {
-        if (strlen(value) > 0)
-            time_tooltip_format = strdup(value);
-    } else if (strcmp(key, "clock_tooltip_timezone") == 0) {
-        if (strlen(value) > 0)
-            time_tooltip_timezone = strdup(value);
-    } else if (strcmp(key, "clock_lclick_command") == 0) {
-        if (strlen(value) > 0)
-            clock_lclick_command = strdup(value);
-    } else if (strcmp(key, "clock_mclick_command") == 0) {
-        if (strlen(value) > 0)
-            clock_mclick_command = strdup(value);
-    } else if (strcmp(key, "clock_rclick_command") == 0) {
-        if (strlen(value) > 0)
-            clock_rclick_command = strdup(value);
-    } else if (strcmp(key, "clock_uwheel_command") == 0) {
-        if (strlen(value) > 0)
-            clock_uwheel_command = strdup(value);
-    } else if (strcmp(key, "clock_dwheel_command") == 0) {
-        if (strlen(value) > 0)
-            clock_dwheel_command = strdup(value);
+
+    } else if (KEY_IS("clock_background_id")) {
+        SET_BG_IDX(value, panel_config.clock.area.bg);
     }
 
     /* Taskbar */
-    else if (strcmp(key, "taskbar_mode") == 0) {
+    SIMPLE_INT("taskbar_name", taskbarname_enabled)
+    SIMPLE_INT("taskbar_hide_inactive_tasks", hide_inactive_tasks)
+    SIMPLE_INT("taskbar_hide_different_monitor", hide_task_diff_monitor)
+    SIMPLE_INT("taskbar_hide_different_desktop", hide_task_diff_desktop)
+    SIMPLE_INT("taskbar_hide_if_empty", hide_taskbar_if_empty)
+    SIMPLE_INT("taskbar_always_show_all_desktop_tasks", always_show_all_desktop_tasks)
+
+    else if (KEY_IS("taskbar_mode")) {
         if (strcmp(value, "multi_desktop") == 0)
             taskbar_mode = MULTI_DESKTOP;
         else
             taskbar_mode = SINGLE_DESKTOP;
-    } else if (strcmp(key, "taskbar_distribute_size") == 0) {
+    } else if (KEY_IS("taskbar_distribute_size")) {
         taskbar_distribute_size = atoi(value);
-    } else if (strcmp(key, "taskbar_padding") == 0) {
+    } else if (KEY_IS("taskbar_padding")) {
         extract_values(value, &value1, &value2, &value3);
         panel_config.g_taskbar.area.paddingxlr = panel_config.g_taskbar.area.paddingx = atoi(value1);
         if (value2)
             panel_config.g_taskbar.area.paddingy = atoi(value2);
         if (value3)
             panel_config.g_taskbar.area.paddingx = atoi(value3);
-    } else if (strcmp(key, "taskbar_background_id") == 0) {
-        int id = atoi(value);
-        id = (id < backgrounds->len && id >= 0) ? id : 0;
-        panel_config.g_taskbar.background[TASKBAR_NORMAL] = &g_array_index(backgrounds, Background, id);
+
+    } else if (KEY_IS("taskbar_background_id")) {
+        SET_BG_IDX(value, panel_config.g_taskbar.background[TASKBAR_NORMAL]);
         if (panel_config.g_taskbar.background[TASKBAR_ACTIVE] == 0)
             panel_config.g_taskbar.background[TASKBAR_ACTIVE] = panel_config.g_taskbar.background[TASKBAR_NORMAL];
-    } else if (strcmp(key, "taskbar_active_background_id") == 0) {
-        int id = atoi(value);
-        id = (id < backgrounds->len && id >= 0) ? id : 0;
-        panel_config.g_taskbar.background[TASKBAR_ACTIVE] = &g_array_index(backgrounds, Background, id);
-    } else if (strcmp(key, "taskbar_name") == 0) {
-        taskbarname_enabled = atoi(value);
-    } else if (strcmp(key, "taskbar_name_padding") == 0) {
+
+    } else if (KEY_IS("taskbar_active_background_id")) {
+        SET_BG_IDX(value, panel_config.g_taskbar.background[TASKBAR_ACTIVE]);
+
+    } else if (KEY_IS("taskbar_name_padding")) {
         extract_values(value, &value1, &value2, &value3);
         panel_config.g_taskbar.area_name.paddingxlr = panel_config.g_taskbar.area_name.paddingx = atoi(value1);
         if (value2)
             panel_config.g_taskbar.area_name.paddingy = atoi(value2);
-    } else if (strcmp(key, "taskbar_name_background_id") == 0) {
-        int id = atoi(value);
-        id = (id < backgrounds->len && id >= 0) ? id : 0;
-        panel_config.g_taskbar.background_name[TASKBAR_NORMAL] = &g_array_index(backgrounds, Background, id);
+
+
+    } else if (KEY_IS("taskbar_name_background_id")) {
+        SET_BG_IDX(value, panel_config.g_taskbar.background_name[TASKBAR_NORMAL]);
         if (panel_config.g_taskbar.background_name[TASKBAR_ACTIVE] == 0)
             panel_config.g_taskbar.background_name[TASKBAR_ACTIVE] =
                 panel_config.g_taskbar.background_name[TASKBAR_NORMAL];
-    } else if (strcmp(key, "taskbar_name_active_background_id") == 0) {
-        int id = atoi(value);
-        id = (id < backgrounds->len && id >= 0) ? id : 0;
-        panel_config.g_taskbar.background_name[TASKBAR_ACTIVE] = &g_array_index(backgrounds, Background, id);
-    } else if (strcmp(key, "taskbar_name_font") == 0) {
+
+    } else if (KEY_IS("taskbar_name_active_background_id")) {
+        SET_BG_IDX(value, panel_config.g_taskbar.background_name[TASKBAR_ACTIVE]);
+
+    } else if (KEY_IS("taskbar_name_font")) {
         panel_config.taskbarname_font_desc = pango_font_description_from_string(value);
         panel_config.taskbarname_has_font = TRUE;
-    } else if (strcmp(key, "taskbar_name_font_color") == 0) {
+
+    } else if (KEY_IS("taskbar_name_font_color")) {
         extract_values(value, &value1, &value2, &value3);
         get_color(value1, taskbarname_font.rgb);
         if (value2)
             taskbarname_font.alpha = (atoi(value2) / 100.0);
         else
             taskbarname_font.alpha = 0.5;
-    } else if (strcmp(key, "taskbar_name_active_font_color") == 0) {
+
+    } else if (KEY_IS("taskbar_name_active_font_color")) {
         extract_values(value, &value1, &value2, &value3);
         get_color(value1, taskbarname_active_font.rgb);
         if (value2)
             taskbarname_active_font.alpha = (atoi(value2) / 100.0);
         else
             taskbarname_active_font.alpha = 0.5;
-    } else if (strcmp(key, "taskbar_hide_inactive_tasks") == 0) {
-        hide_inactive_tasks = atoi(value);
-    } else if (strcmp(key, "taskbar_hide_different_monitor") == 0) {
-        hide_task_diff_monitor = atoi(value);
-    } else if (strcmp(key, "taskbar_hide_different_desktop") == 0) {
-        hide_task_diff_desktop = atoi(value);
-    } else if (strcmp(key, "taskbar_hide_if_empty") == 0) {
-        hide_taskbar_if_empty = atoi(value);
-    } else if (strcmp(key, "taskbar_always_show_all_desktop_tasks") == 0) {
-        always_show_all_desktop_tasks = atoi(value);
-    } else if (strcmp(key, "taskbar_sort_order") == 0) {
+
+    } else if (KEY_IS("taskbar_sort_order")) {
         if (strcmp(value, "center") == 0) {
             taskbar_sort_method = TASKBAR_SORT_CENTER;
         } else if (strcmp(value, "title") == 0) {
@@ -1057,7 +962,8 @@ void add_entry(char *key, char *value)
         } else {
             taskbar_sort_method = TASKBAR_NOSORT;
         }
-    } else if (strcmp(key, "task_align") == 0) {
+
+    } else if (KEY_IS("task_align")) {
         if (strcmp(value, "center") == 0) {
             taskbar_alignment = ALIGN_CENTER;
         } else if (strcmp(value, "right") == 0) {
@@ -1068,33 +974,40 @@ void add_entry(char *key, char *value)
     }
 
     /* Task */
-    else if (strcmp(key, "task_text") == 0)
-        panel_config.g_task.has_text = atoi(value);
-    else if (strcmp(key, "task_icon") == 0)
-        panel_config.g_task.has_icon = atoi(value);
-    else if (strcmp(key, "task_centered") == 0)
-        panel_config.g_task.centered = atoi(value);
-    else if (strcmp(key, "task_width") == 0) {
+    SIMPLE_INT("task_text", panel_config.g_task.has_text)
+    SIMPLE_INT("task_icon", panel_config.g_task.has_icon)
+    SIMPLE_INT("task_centered", panel_config.g_task.centered)
+    // "tooltip" is deprecated but here for backwards compatibility
+    SIMPLE_INT("task_tooltip", panel_config.g_task.tooltip_enabled)
+
+    SIMPLE_INT("task_thumbnail", panel_config.g_task.thumbnail_enabled)
+    else if (KEY_IS("task_thumbnail_size")) panel_config.g_task.thumbnail_width = MAX(8, atoi(value));
+
+    else if (KEY_IS("task_width")) {
         // old parameter : just for backward compatibility
         panel_config.g_task.maximum_width = atoi(value);
         panel_config.g_task.maximum_height = 30;
-    } else if (strcmp(key, "task_maximum_size") == 0) {
+
+    } else if (KEY_IS("task_maximum_size")) {
         extract_values(value, &value1, &value2, &value3);
         panel_config.g_task.maximum_width = atoi(value1);
         if (value2)
             panel_config.g_task.maximum_height = atoi(value2);
         else
             panel_config.g_task.maximum_height = panel_config.g_task.maximum_width;
-    } else if (strcmp(key, "task_padding") == 0) {
+
+    } else if (KEY_IS("task_padding")) {
         extract_values(value, &value1, &value2, &value3);
         panel_config.g_task.area.paddingxlr = panel_config.g_task.area.paddingx = atoi(value1);
         if (value2)
             panel_config.g_task.area.paddingy = atoi(value2);
         if (value3)
             panel_config.g_task.area.paddingx = atoi(value3);
-    } else if (strcmp(key, "task_font") == 0) {
+
+    } else if (KEY_IS("task_font")) {
         panel_config.g_task.font_desc = pango_font_description_from_string(value);
         panel_config.g_task.has_font = TRUE;
+
     } else if (g_regex_match_simple("task.*_font_color", key, 0, 0)) {
         gchar **split = g_regex_split_simple("_", key, 0, 0);
         int status = g_strv_length(split) == 3 ? TASK_NORMAL : get_task_status(split[1]);
@@ -1108,6 +1021,7 @@ void add_entry(char *key, char *value)
             panel_config.g_task.font[status].alpha = alpha;
             panel_config.g_task.config_font_mask |= (1 << status);
         }
+
     } else if (g_regex_match_simple("task.*_icon_asb", key, 0, 0)) {
         gchar **split = g_regex_split_simple("_", key, 0, 0);
         int status = g_strv_length(split) == 3 ? TASK_NORMAL : get_task_status(split[1]);
@@ -1119,14 +1033,14 @@ void add_entry(char *key, char *value)
             panel_config.g_task.brightness[status] = atoi(value3);
             panel_config.g_task.config_asb_mask |= (1 << status);
         }
+
     } else if (g_regex_match_simple("task.*_background_id", key, 0, 0)) {
         gchar **split = g_regex_split_simple("_", key, 0, 0);
         int status = g_strv_length(split) == 3 ? TASK_NORMAL : get_task_status(split[1]);
         g_strfreev(split);
         if (status >= 0) {
-            int id = atoi(value);
-            id = (id < backgrounds->len && id >= 0) ? id : 0;
-            panel_config.g_task.background[status] = &g_array_index(backgrounds, Background, id);
+            SET_BG_IDX(value, panel_config.g_task.background[status]);
+
             panel_config.g_task.config_background_mask |= (1 << status);
             if (status == TASK_NORMAL)
                 panel_config.g_task.area.bg = panel_config.g_task.background[TASK_NORMAL];
@@ -1135,16 +1049,11 @@ void add_entry(char *key, char *value)
                 panel_config.g_task.has_content_tint = TRUE;
         }
     }
-    // "tooltip" is deprecated but here for backwards compatibility
-    else if (strcmp(key, "task_tooltip") == 0 || strcmp(key, "tooltip") == 0)
-        panel_config.g_task.tooltip_enabled = atoi(value);
-    else if (strcmp(key, "task_thumbnail") == 0)
-        panel_config.g_task.thumbnail_enabled = atoi(value);
-    else if (strcmp(key, "task_thumbnail_size") == 0)
-        panel_config.g_task.thumbnail_width = MAX(8, atoi(value));
 
     /* Systray */
-    else if (strcmp(key, "systray_padding") == 0) {
+    SIMPLE_INT("systray_icon_size", systray_max_icon_size)
+
+    else if (KEY_IS("systray_padding")) {
         if (!new_config_file && systray_enabled == 0) {
             systray_enabled = TRUE;
             if (panel_items_order) {
@@ -1161,11 +1070,11 @@ void add_entry(char *key, char *value)
             systray.area.paddingy = atoi(value2);
         if (value3)
             systray.area.paddingx = atoi(value3);
-    } else if (strcmp(key, "systray_background_id") == 0) {
-        int id = atoi(value);
-        id = (id < backgrounds->len && id >= 0) ? id : 0;
-        systray.area.bg = &g_array_index(backgrounds, Background, id);
-    } else if (strcmp(key, "systray_sort") == 0) {
+
+    } else if (KEY_IS("systray_background_id")) {
+        SET_BG_IDX(value, systray.area.bg);
+
+    } else if (KEY_IS("systray_sort")) {
         if (strcmp(value, "descending") == 0)
             systray.sort = SYSTRAY_SORT_DESCENDING;
         else if (strcmp(value, "ascending") == 0)
@@ -1174,16 +1083,17 @@ void add_entry(char *key, char *value)
             systray.sort = SYSTRAY_SORT_LEFT2RIGHT;
         else if (strcmp(value, "right2left") == 0)
             systray.sort = SYSTRAY_SORT_RIGHT2LEFT;
-    } else if (strcmp(key, "systray_icon_size") == 0) {
-        systray_max_icon_size = atoi(value);
-    } else if (strcmp(key, "systray_icon_asb") == 0) {
+
+    } else if (KEY_IS("systray_icon_asb")) {
         extract_values(value, &value1, &value2, &value3);
         systray.alpha = atoi(value1);
         systray.saturation = atoi(value2);
         systray.brightness = atoi(value3);
-    } else if (strcmp(key, "systray_monitor") == 0) {
+
+    } else if (KEY_IS("systray_monitor")) {
         systray_monitor = MAX(0, config_get_monitor(value));
-    } else if (strcmp(key, "systray_name_filter") == 0) {
+
+    } else if (KEY_IS("systray_name_filter")) {
         if (systray_hide_name_filter) {
             fprintf(stderr, "tint2: Error: duplicate option 'systray_name_filter'. Please use it only once. See "
                             "https://gitlab.com/o9000/tint2/issues/652\n");
@@ -1193,95 +1103,104 @@ void add_entry(char *key, char *value)
     }
 
     /* Launcher */
-    else if (strcmp(key, "launcher_padding") == 0) {
+    SIMPLE_INT("launcher_icon_size", launcher_max_icon_size)
+    SIMPLE_INT("launcher_icon_theme_override", launcher_icon_theme_override)
+    SIMPLE_INT("launcher_tooltip", launcher_tooltip_enabled)
+    SIMPLE_INT("startup_notifications", startup_notifications)
+
+    else if (KEY_IS("launcher_padding")) {
         extract_values(value, &value1, &value2, &value3);
         panel_config.launcher.area.paddingxlr = panel_config.launcher.area.paddingx = atoi(value1);
         if (value2)
             panel_config.launcher.area.paddingy = atoi(value2);
         if (value3)
             panel_config.launcher.area.paddingx = atoi(value3);
-    } else if (strcmp(key, "launcher_background_id") == 0) {
-        int id = atoi(value);
-        id = (id < backgrounds->len && id >= 0) ? id : 0;
-        panel_config.launcher.area.bg = &g_array_index(backgrounds, Background, id);
-    } else if (strcmp(key, "launcher_icon_background_id") == 0) {
-        int id = atoi(value);
-        id = (id < backgrounds->len && id >= 0) ? id : 0;
-        launcher_icon_bg = &g_array_index(backgrounds, Background, id);
-    } else if (strcmp(key, "launcher_icon_size") == 0) {
-        launcher_max_icon_size = atoi(value);
-    } else if (strcmp(key, "launcher_item_app") == 0) {
+
+    } else if (KEY_IS("launcher_background_id")) {
+        SET_BG_IDX(value, panel_config.launcher.area.bg);
+
+    } else if (KEY_IS("launcher_icon_background_id")) {
+        SET_BG_IDX(value, launcher_icon_bg);
+
+    } else if (KEY_IS("launcher_item_app")) {
         char *app = expand_tilde(value);
         panel_config.launcher.list_apps = g_slist_append(panel_config.launcher.list_apps, app);
-    } else if (strcmp(key, "launcher_apps_dir") == 0) {
+
+    } else if (KEY_IS("launcher_apps_dir")) {
         char *path = expand_tilde(value);
         load_launcher_app_dir(path);
         free(path);
-    } else if (strcmp(key, "launcher_icon_theme") == 0) {
+
+    } else if (KEY_IS("launcher_icon_theme")) {
         // if XSETTINGS manager running, tint2 use it.
         if (icon_theme_name_config)
             free(icon_theme_name_config);
         icon_theme_name_config = strdup(value);
-    } else if (strcmp(key, "launcher_icon_theme_override") == 0) {
-        launcher_icon_theme_override = atoi(value);
-    } else if (strcmp(key, "launcher_icon_asb") == 0) {
+
+    } else if (KEY_IS("launcher_icon_asb")) {
         extract_values(value, &value1, &value2, &value3);
         launcher_alpha = atoi(value1);
         launcher_saturation = atoi(value2);
         launcher_brightness = atoi(value3);
-    } else if (strcmp(key, "launcher_tooltip") == 0) {
-        launcher_tooltip_enabled = atoi(value);
-    } else if (strcmp(key, "startup_notifications") == 0) {
-        startup_notifications = atoi(value);
     }
 
     /* Tooltip */
-    else if (strcmp(key, "tooltip_show_timeout") == 0) {
+    else if (KEY_IS("tooltip_show_timeout")) {
         int timeout_msec = 1000 * atof(value);
         g_tooltip.show_timeout_msec = timeout_msec;
-    } else if (strcmp(key, "tooltip_hide_timeout") == 0) {
+
+    } else if (KEY_IS("tooltip_hide_timeout")) {
         int timeout_msec = 1000 * atof(value);
         g_tooltip.hide_timeout_msec = timeout_msec;
-    } else if (strcmp(key, "tooltip_padding") == 0) {
+
+    } else if (KEY_IS("tooltip_padding")) {
         extract_values(value, &value1, &value2, &value3);
         if (value1)
             g_tooltip.paddingx = atoi(value1);
         if (value2)
             g_tooltip.paddingy = atoi(value2);
-    } else if (strcmp(key, "tooltip_background_id") == 0) {
-        int id = atoi(value);
-        id = (id < backgrounds->len && id >= 0) ? id : 0;
-        g_tooltip.bg = &g_array_index(backgrounds, Background, id);
-    } else if (strcmp(key, "tooltip_font_color") == 0) {
+
+    } else if (KEY_IS("tooltip_background_id")) {
+        SET_BG_IDX(value, g_tooltip.bg);
+
+    } else if (KEY_IS("tooltip_font_color")) {
         extract_values(value, &value1, &value2, &value3);
         get_color(value1, g_tooltip.font_color.rgb);
         if (value2)
             g_tooltip.font_color.alpha = (atoi(value2) / 100.0);
         else
             g_tooltip.font_color.alpha = 0.1;
-    } else if (strcmp(key, "tooltip_font") == 0) {
+
+    } else if (KEY_IS("tooltip_font")) {
         g_tooltip.font_desc = pango_font_description_from_string(value);
     }
 
     /* Mouse actions */
-    else if (strcmp(key, "mouse_left") == 0)
+    else if (KEY_IS("mouse_left"))
         get_action(value, &mouse_left);
-    else if (strcmp(key, "mouse_middle") == 0)
+
+    else if (KEY_IS("mouse_middle"))
         get_action(value, &mouse_middle);
-    else if (strcmp(key, "mouse_right") == 0)
+
+    else if (KEY_IS("mouse_right"))
         get_action(value, &mouse_right);
-    else if (strcmp(key, "mouse_scroll_up") == 0)
+
+    else if (KEY_IS("mouse_scroll_up"))
         get_action(value, &mouse_scroll_up);
-    else if (strcmp(key, "mouse_scroll_down") == 0)
+
+    else if (KEY_IS("mouse_scroll_down"))
         get_action(value, &mouse_scroll_down);
-    else if (strcmp(key, "mouse_effects") == 0)
+
+    else if (KEY_IS("mouse_effects"))
         panel_config.mouse_effects = atoi(value);
-    else if (strcmp(key, "mouse_hover_icon_asb") == 0) {
+
+    else if (KEY_IS("mouse_hover_icon_asb")) {
         extract_values(value, &value1, &value2, &value3);
         panel_config.mouse_over_alpha = atoi(value1);
         panel_config.mouse_over_saturation = atoi(value2);
         panel_config.mouse_over_brightness = atoi(value3);
-    } else if (strcmp(key, "mouse_pressed_icon_asb") == 0) {
+
+    } else if (KEY_IS("mouse_pressed_icon_asb")) {
         extract_values(value, &value1, &value2, &value3);
         panel_config.mouse_pressed_alpha = atoi(value1);
         panel_config.mouse_pressed_saturation = atoi(value2);
@@ -1289,20 +1208,23 @@ void add_entry(char *key, char *value)
     }
 
     /* autohide options */
-    else if (strcmp(key, "autohide") == 0)
-        panel_autohide = atoi(value);
-    else if (strcmp(key, "autohide_show_timeout") == 0)
+    SIMPLE_INT("autohide", panel_autohide)
+
+    else if (KEY_IS("autohide_show_timeout"))
         panel_autohide_show_timeout = 1000 * atof(value);
-    else if (strcmp(key, "autohide_hide_timeout") == 0)
+
+    else if (KEY_IS("autohide_hide_timeout"))
         panel_autohide_hide_timeout = 1000 * atof(value);
-    else if (strcmp(key, "strut_policy") == 0) {
+
+    else if (KEY_IS("strut_policy")) {
         if (strcmp(value, "follow_size") == 0)
             panel_strut_policy = STRUT_FOLLOW_SIZE;
         else if (strcmp(value, "none") == 0)
             panel_strut_policy = STRUT_NONE;
         else
             panel_strut_policy = STRUT_MINIMUM;
-    } else if (strcmp(key, "autohide_height") == 0) {
+
+    } else if (KEY_IS("autohide_height")) {
         panel_autohide_height = atoi(value);
         if (panel_autohide_height == 0) {
             // autohide need height > 0
@@ -1311,7 +1233,7 @@ void add_entry(char *key, char *value)
     }
 
     // old config option
-    else if (strcmp(key, "systray") == 0) {
+    else if (KEY_IS("systray")) {
         if (!new_config_file) {
             systray_enabled = atoi(value);
             if (systray_enabled) {
@@ -1325,8 +1247,9 @@ void add_entry(char *key, char *value)
             }
         }
     }
+
 #ifdef ENABLE_BATTERY
-    else if (strcmp(key, "battery") == 0) {
+    else if (KEY_IS("battery")) {
         if (!new_config_file) {
             battery_enabled = atoi(value);
             if (battery_enabled) {
@@ -1341,7 +1264,8 @@ void add_entry(char *key, char *value)
         }
     }
 #endif
-    else if (strcmp(key, "primary_monitor_first") == 0) {
+
+    else if (KEY_IS("primary_monitor_first")) {
         fprintf(stderr,
                 "tint2: deprecated config option \"%s\"\n"
                 "       Please see the documentation regarding the alternatives.\n",
@@ -1349,12 +1273,11 @@ void add_entry(char *key, char *value)
     } else
         fprintf(stderr, "tint2: invalid option \"%s\",\n  upgrade tint2 or correct your config file\n", key);
 
-    if (value1)
-        free(value1);
-    if (value2)
-        free(value2);
-    if (value3)
-        free(value3);
+    #undef KEY_IS
+
+    if (value1) free(value1);
+    if (value2) free(value2);
+    if (value3) free(value3);
 }
 
 gboolean config_read_file(const char *path)
