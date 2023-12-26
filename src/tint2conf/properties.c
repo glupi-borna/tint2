@@ -31,6 +31,8 @@ GtkWidget *panel_combo_strut_policy, *panel_combo_layer, *panel_combo_width_type
     *panel_combo_monitor;
 GtkWidget *panel_window_name, *disable_transparency;
 GtkWidget *panel_mouse_effects;
+GtkWidget *panel_left_command, *panel_right_command, *panel_mclick_command, *panel_uwheel_command, *panel_dwheel_command;
+
 GtkWidget *mouse_hover_icon_opacity, *mouse_hover_icon_saturation, *mouse_hover_icon_brightness;
 GtkWidget *mouse_pressed_icon_opacity, *mouse_pressed_icon_saturation, *mouse_pressed_icon_brightness;
 GtkWidget *panel_shrink;
@@ -936,6 +938,110 @@ void create_panel(GtkWidget *parent)
     col++;
 
     change_paragraph(parent);
+
+
+    label = gtk_label_new(_("<b>Mouse events</b>"));
+    gtk_misc_set_alignment(GTK_MISC(label), 0, 0);
+    gtk_label_set_use_markup(GTK_LABEL(label), TRUE);
+    gtk_widget_show(label);
+    gtk_box_pack_start(GTK_BOX(parent), label, FALSE, FALSE, 0);
+
+    table = gtk_table_new(5, 10, FALSE);
+    gtk_widget_show(table);
+    gtk_box_pack_start(GTK_BOX(parent), table, FALSE, FALSE, 0);
+    gtk_table_set_row_spacings(GTK_TABLE(table), ROW_SPACING);
+    gtk_table_set_col_spacings(GTK_TABLE(table), COL_SPACING);
+
+    row = 0;
+    col = 2;
+
+    label = gtk_label_new(_("Left click command"));
+    gtk_misc_set_alignment(GTK_MISC(label), 0, 0);
+    gtk_widget_show(label);
+    gtk_table_attach(GTK_TABLE(table), label, col, col + 1, row, row + 1, GTK_FILL, 0, 0, 0);
+    col++;
+
+    panel_left_command = gtk_entry_new();
+    gtk_widget_show(panel_left_command);
+    gtk_entry_set_width_chars(GTK_ENTRY(panel_left_command), 50);
+    gtk_table_attach(GTK_TABLE(table), panel_left_command, col, col + 1, row, row + 1, GTK_FILL, 0, 0, 0);
+    col++;
+    gtk_tooltips_set_tip(tooltips,
+                         panel_left_command,
+                         _("Specifies a command that will be executed when the panel receives a left click."),
+                         NULL);
+
+    row++, col = 2;
+    label = gtk_label_new(_("Right click command"));
+    gtk_misc_set_alignment(GTK_MISC(label), 0, 0);
+    gtk_widget_show(label);
+    gtk_table_attach(GTK_TABLE(table), label, col, col + 1, row, row + 1, GTK_FILL, 0, 0, 0);
+    col++;
+
+    panel_right_command = gtk_entry_new();
+    gtk_widget_show(panel_right_command);
+    gtk_entry_set_width_chars(GTK_ENTRY(panel_right_command), 50);
+    gtk_table_attach(GTK_TABLE(table), panel_right_command, col, col + 1, row, row + 1, GTK_FILL, 0, 0, 0);
+    col++;
+    gtk_tooltips_set_tip(tooltips,
+                         panel_right_command,
+                         _("Specifies a command that will be executed when the panel receives a right click."),
+                         NULL);
+
+    row++, col = 2;
+    label = gtk_label_new(_("Middle click command"));
+    gtk_misc_set_alignment(GTK_MISC(label), 0, 0);
+    gtk_widget_show(label);
+    gtk_table_attach(GTK_TABLE(table), label, col, col + 1, row, row + 1, GTK_FILL, 0, 0, 0);
+    col++;
+
+    panel_mclick_command = gtk_entry_new();
+    gtk_widget_show(panel_mclick_command);
+    gtk_entry_set_width_chars(GTK_ENTRY(panel_mclick_command), 50);
+    gtk_table_attach(GTK_TABLE(table), panel_mclick_command, col, col + 1, row, row + 1, GTK_FILL, 0, 0, 0);
+    col++;
+    gtk_tooltips_set_tip(tooltips,
+                         panel_mclick_command,
+                         _("Specifies a command that will be executed when the panel receives a middle click."),
+                         NULL);
+
+    row++, col = 2;
+    label = gtk_label_new(_("Wheel scroll up command"));
+    gtk_misc_set_alignment(GTK_MISC(label), 0, 0);
+    gtk_widget_show(label);
+    gtk_table_attach(GTK_TABLE(table), label, col, col + 1, row, row + 1, GTK_FILL, 0, 0, 0);
+    col++;
+
+    panel_uwheel_command = gtk_entry_new();
+    gtk_widget_show(panel_uwheel_command);
+    gtk_entry_set_width_chars(GTK_ENTRY(panel_uwheel_command), 50);
+    gtk_table_attach(GTK_TABLE(table), panel_uwheel_command, col, col + 1, row, row + 1, GTK_FILL, 0, 0, 0);
+    col++;
+    gtk_tooltips_set_tip(tooltips,
+                         panel_uwheel_command,
+                         _("Specifies a command that will be executed when the panel receives a mouse scroll up."),
+                         NULL);
+
+    row++, col = 2;
+    label = gtk_label_new(_("Wheel scroll down command"));
+    gtk_misc_set_alignment(GTK_MISC(label), 0, 0);
+    gtk_widget_show(label);
+    gtk_table_attach(GTK_TABLE(table), label, col, col + 1, row, row + 1, GTK_FILL, 0, 0, 0);
+    col++;
+
+    panel_dwheel_command = gtk_entry_new();
+    gtk_widget_show(panel_dwheel_command);
+    gtk_entry_set_width_chars(GTK_ENTRY(panel_dwheel_command), 50);
+    gtk_table_attach(GTK_TABLE(table), panel_dwheel_command, col, col + 1, row, row + 1, GTK_FILL, 0, 0, 0);
+    col++;
+    gtk_tooltips_set_tip(tooltips,
+                         panel_dwheel_command,
+                         _("Specifies a command that will be executed when the panel receives a mouse scroll down."),
+                         NULL);
+
+    change_paragraph(parent);
+
+
 
     label = gtk_label_new(_("<b>Window manager interaction</b>"));
     gtk_misc_set_alignment(GTK_MISC(label), 0, 0);

@@ -151,6 +151,13 @@ typedef struct Panel {
     int hidden_width, hidden_height;
     Pixmap hidden_pixmap;
     Timer autohide_timer;
+
+    // Mouse actions
+    char *lclick_command;
+    char *mclick_command;
+    char *rclick_command;
+    char *uwheel_command;
+    char *dwheel_command;
 } Panel;
 
 extern Panel panel_config;
@@ -217,4 +224,7 @@ Imlib_Image scale_icon(Imlib_Image original, int icon_size);
 void save_screenshot(const char *path);
 void save_panel_screenshot(const Panel *panel, const char *path);
 
+void panel_action(const Panel* panel, int mouse_button);
+
 #endif
+

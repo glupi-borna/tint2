@@ -352,6 +352,12 @@ void config_write_panel(FILE *fp)
     fprintf(fp, "autohide_hide_timeout = %g\n", gtk_spin_button_get_value(GTK_SPIN_BUTTON(panel_autohide_hide_time)));
     fprintf(fp, "autohide_height = %d\n", (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(panel_autohide_size)));
 
+    fprintf(fp, "panel_lclick_command = %s\n", gtk_entry_get_text(GTK_ENTRY(panel_left_command)));
+    fprintf(fp, "panel_rclick_command = %s\n", gtk_entry_get_text(GTK_ENTRY(panel_right_command)));
+    fprintf(fp, "panel_mclick_command = %s\n", gtk_entry_get_text(GTK_ENTRY(panel_mclick_command)));
+    fprintf(fp, "panel_uwheel_command = %s\n", gtk_entry_get_text(GTK_ENTRY(panel_uwheel_command)));
+    fprintf(fp, "panel_dwheel_command = %s\n", gtk_entry_get_text(GTK_ENTRY(panel_dwheel_command)));
+
     fprintf(fp, "strut_policy = ");
     if (gtk_combo_box_get_active(GTK_COMBO_BOX(panel_combo_strut_policy)) == 0) {
         fprintf(fp, "follow_size");
@@ -1448,6 +1454,17 @@ void add_entry(char *key, char *value)
         } else {
             gtk_spin_button_set_value(GTK_SPIN_BUTTON(panel_autohide_size), atoi(value));
         }
+    } else if (strcmp(key, "panel_lclick_command") == 0) {
+        gtk_entry_set_text(GTK_ENTRY(panel_left_command), value);
+    } else if (strcmp(key, "panel_rclick_command") == 0) {
+        gtk_entry_set_text(GTK_ENTRY(panel_right_command), value);
+    } else if (strcmp(key, "panel_mclick_command") == 0) {
+        gtk_entry_set_text(GTK_ENTRY(panel_mclick_command), value);
+    } else if (strcmp(key, "panel_uwheel_command") == 0) {
+        gtk_entry_set_text(GTK_ENTRY(panel_uwheel_command), value);
+    } else if (strcmp(key, "panel_dwheel_command") == 0) {
+        gtk_entry_set_text(GTK_ENTRY(panel_dwheel_command), value);
+
 
     } else if (strcmp(key, "battery") == 0) {
         /* Battery */

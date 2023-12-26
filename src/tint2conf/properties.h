@@ -18,6 +18,7 @@ extern GtkWidget *panel_combo_strut_policy, *panel_combo_layer, *panel_combo_wid
     *panel_combo_monitor;
 extern GtkWidget *panel_window_name, *disable_transparency;
 extern GtkWidget *panel_mouse_effects;
+extern GtkWidget *panel_left_command, *panel_right_command, *panel_mclick_command, *panel_uwheel_command, *panel_dwheel_command;
 extern GtkWidget *mouse_hover_icon_opacity, *mouse_hover_icon_saturation, *mouse_hover_icon_brightness;
 extern GtkWidget *mouse_pressed_icon_opacity, *mouse_pressed_icon_saturation, *mouse_pressed_icon_brightness;
 extern GtkWidget *panel_shrink;

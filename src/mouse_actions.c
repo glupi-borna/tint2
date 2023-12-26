@@ -69,6 +69,12 @@ gboolean tint2_handles_click(Panel *panel, XButtonEvent *e)
         return TRUE;
     if (click_button(panel, e->x, e->y))
         return TRUE;
+
+    if ((e->button == 1 && panel->lclick_command) || (e->button == 2 && panel->mclick_command) ||
+        (e->button == 3 && panel->rclick_command) || (e->button == 4 && panel->uwheel_command) ||
+        (e->button == 5 && panel->dwheel_command))
+        return TRUE;
+
     return FALSE;
 }
 
@@ -276,10 +282,24 @@ void handle_mouse_release_event(XEvent *e)
             } else {
                 task_handle_mouse_event(task, action);
             }
+
+            if (panel_layer == BOTTOM_LAYER)
+                XLowerWindow(server.display, panel->main_win);
+            task_drag = 0;
+            return;
         }
     } else {
-        task_handle_mouse_event(click_task(panel, e->xbutton.x, e->xbutton.y), action);
+        Task* task = click_task(panel, e->xbutton.x, e->xbutton.y);
+        if (task) {
+            task_handle_mouse_event(task, action);
+            if (panel_layer == BOTTOM_LAYER)
+                XLowerWindow(server.display, panel->main_win);
+            task_drag = 0;
+            return;
+        }
     }
+
+    panel_action(panel, e->xbutton.button);
 
     // to keep window below
     if (panel_layer == BOTTOM_LAYER)

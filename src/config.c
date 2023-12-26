@@ -526,7 +526,23 @@ void add_entry(char *key, char *value)
             free(panel_window_name);
             panel_window_name = strdup(value);
         }
+    } else if (strcmp(key, "panel_lclick_command") == 0) {
+        if (strlen(value) > 0)
+            panel_config.lclick_command = strdup(value);
+    } else if (strcmp(key, "panel_mclick_command") == 0) {
+        if (strlen(value) > 0)
+            panel_config.mclick_command = strdup(value);
+    } else if (strcmp(key, "panel_rclick_command") == 0) {
+        if (strlen(value) > 0)
+            panel_config.rclick_command = strdup(value);
+    } else if (strcmp(key, "panel_uwheel_command") == 0) {
+        if (strlen(value) > 0)
+            panel_config.uwheel_command = strdup(value);
+    } else if (strcmp(key, "panel_dwheel_command") == 0) {
+        if (strlen(value) > 0)
+            panel_config.dwheel_command = strdup(value);
     }
+
 
     /* Battery */
     else if (strcmp(key, "battery_low_status") == 0) {

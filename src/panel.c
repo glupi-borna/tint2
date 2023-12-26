@@ -1308,3 +1308,27 @@ void save_screenshot(const char *path)
 
     save_panel_screenshot(panel, path);
 }
+
+void panel_action(const Panel* panel, int mouse_button)
+{
+    char *command = NULL;
+    switch (mouse_button) {
+    case 1:
+        command = panel->lclick_command;
+        break;
+    case 2:
+        command = panel->mclick_command;
+        break;
+    case 3:
+        command = panel->rclick_command;
+        break;
+    case 4:
+        command = panel->uwheel_command;
+        break;
+    case 5:
+        command = panel->dwheel_command;
+        break;
+    }
+    tint_exec(command, NULL, NULL, 0, &panel->area, 0, 0, FALSE, FALSE);
+}
+
