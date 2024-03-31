@@ -157,7 +157,9 @@ void uevent_handler()
 
     struct uevent *ev = uevent_new(buf, len);
     if (ev) {
-        for (GList *l = notifiers; l; l = l->next) {
+        GList *list = g_list_copy(notifiers);
+
+        for (GList *l = list; l; l = l->next) {
             struct uevent_notify *nb = l->data;
 
             if (!(ev->action & nb->action))
@@ -169,6 +171,7 @@ void uevent_handler()
             nb->cb(ev, nb->userdata);
         }
 
+        g_list_free(list);
         uevent_free(ev);
     }
 }
