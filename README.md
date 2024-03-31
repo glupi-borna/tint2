@@ -1,3 +1,16 @@
+# Personal fork of [tint2](https://gitlab.com/o9000/tint2)
+
+Here is a rough list of features I've added since forking:
+
+* Panel click events
+  * Surprisingly, the original version does not have event hooks for when the blank parts of the panel are clicked, right-clicked, scrolled on, etc. I wanted to have this because it makes sense to me to, for example, show a context menu when the panel is right-clicked, or to switch the focused window/workspace when the wheel is scrolled while hovering over the panel. Thankfully, it was trivial to implement.
+* Isolate executor applet by display
+  * Likely for performance reasons, the executor applet would only run once, even if you have a panel duplicated across multiple displays. This, however, means that you can not use the executor widget to display the currently active i3 workspace, because different displays have separate workspaces. While working on this, I realized that it would be useful to be able to identify *which* display the executor is running on, so I have also exported the `EXECP_MONITOR` and `EXECP_MONITOR_NAME` environment variables to the command that gets executed.
+
+Every feature that I add is also added to `tint2_conf` to make it configurable through the UI.
+
+Original readme:
+
 # Latest stable release: 17.0.2
 
 The final release of tint2 is 17.0.2.
